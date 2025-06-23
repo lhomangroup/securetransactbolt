@@ -1,12 +1,11 @@
-import React, { useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Switch } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Bell, DollarSign, Package, MessageCircle, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle, Settings } from 'lucide-react-native';
+import { ArrowLeft, Bell, MessageCircle, Package, AlertTriangle, CheckCircle } from 'lucide-react-native';
 
 interface Notification {
   id: string;
-  type: 'payment' | 'shipping' | 'message' | 'dispute' | 'completed' | 'system';
+  type: 'message' | 'transaction' | 'system' | 'dispute';
   title: string;
   message: string;
   timestamp: string;
@@ -14,213 +13,124 @@ interface Notification {
   transactionId?: string;
 }
 
+const notifications: Notification[] = [
+  {
+    id: '1',
+    type: 'message',
+    title: 'Nouveau message',
+    message: 'Alexandre Martin vous a envoyé un message concernant l\'iPhone 15 Pro Max',
+    timestamp: '2024-02-18T16:20:00Z',
+    read: false,
+    transactionId: '1'
+  },
+  {
+    id: '2',
+    type: 'transaction',
+    title: 'Article livré',
+    message: 'Votre commande iPhone 15 Pro Max a été livrée. Période d\'inspection : 3 jours.',
+    timestamp: '2024-02-18T11:30:00Z',
+    read: false,
+    transactionId: '1'
+  },
+  {
+    id: '3',
+    type: 'system',
+    title: 'Paiement reçu',
+    message: 'Vous avez reçu 650€ pour la location Tesla Model Y.',
+    timestamp: '2024-02-17T14:00:00Z',
+    read: true,
+    transactionId: '2'
+  },
+  {
+    id: '4',
+    type: 'dispute',
+    title: 'Litige ouvert',
+    message: 'Un litige a été ouvert pour le développement d\'application mobile.',
+    timestamp: '2024-02-16T08:00:00Z',
+    read: true,
+    transactionId: '3'
+  },
+  {
+    id: '5',
+    type: 'transaction',
+    title: 'Transaction terminée',
+    message: 'Votre transaction MacBook Pro 14" M3 Pro s\'est terminée avec succès.',
+    timestamp: '2024-02-15T10:00:00Z',
+    read: true,
+    transactionId: '4'
+  }
+];
+
 export default function NotificationsScreen() {
   const router = useRouter();
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: '1',
-      type: 'message',
-      title: 'Nouveau message',
-      message: 'Marie Dubois vous a envoyé un message concernant l\'iPhone 14 Pro',
-      timestamp: '2024-01-18T10:30:00Z',
-      read: false,
-      transactionId: '1'
-    },
-    {
-      id: '2',
-      type: 'payment',
-      title: 'Paiement reçu',
-      message: 'Le paiement pour le MacBook Air M2 a été sécurisé',
-      timestamp: '2024-01-17T15:45:00Z',
-      read: false,
-      transactionId: '2'
-    },
-    {
-      id: '3',
-      type: 'shipping',
-      title: 'Article expédié',
-      message: 'L\'iPhone 14 Pro a été marqué comme expédié',
-      timestamp: '2024-01-17T09:20:00Z',
-      read: true,
-      transactionId: '1'
-    },
-    {
-      id: '4',
-      type: 'dispute',
-      title: 'Litige ouvert',
-      message: 'Un litige a été ouvert pour les services de développement web',
-      timestamp: '2024-01-16T14:30:00Z',
-      read: true,
-      transactionId: '3'
-    },
-    {
-      id: '5',
-      type: 'completed',
-      title: 'Transaction terminée',
-      message: 'La transaction pour l\'iPad Pro a été terminée avec succès',
-      timestamp: '2024-01-15T11:15:00Z',
-      read: true,
-      transactionId: '4'
-    }
-  ]);
-
-  const [pushEnabled, setPushEnabled] = useState(true);
-  const [emailEnabled, setEmailEnabled] = useState(true);
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
-      case 'payment':
-        return <DollarSign color="#10B981" size={20} />;
-      case 'shipping':
-        return <Package color="#2563EB" size={20} />;
       case 'message':
-        return <MessageCircle color="#8B5CF6" size={20} />;
+        return <MessageCircle size={20} color="#2563EB" />;
+      case 'transaction':
+        return <Package size={20} color="#059669" />;
       case 'dispute':
-        return <AlertTriangle color="#EF4444" size={20} />;
-      case 'completed':
-        return <CheckCircle color="#10B981" size={20} />;
+        return <AlertTriangle size={20} color="#DC2626" />;
       default:
-        return <Bell color="#6B7280" size={20} />;
+        return <Bell size={20} color="#6B7280" />;
     }
   };
 
-  const formatTime = (timestamp: string) => {
+  const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
     const now = new Date();
-    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-    
-    if (diffInHours < 1) {
-      return 'À l\'instant';
-    } else if (diffInHours < 24) {
-      return `Il y a ${Math.floor(diffInHours)}h`;
-    } else if (diffInHours < 24 * 7) {
-      const days = Math.floor(diffInHours / 24);
-      return `Il y a ${days}j`;
-    } else {
-      return date.toLocaleDateString('fr-FR', { 
-        day: '2-digit', 
-        month: '2-digit' 
-      });
-    }
+    const diff = now.getTime() - date.getTime();
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+
+    if (hours < 1) return 'À l\'instant';
+    if (hours < 24) return `Il y a ${hours}h`;
+    return date.toLocaleDateString('fr-FR');
   };
 
   const handleNotificationPress = (notification: Notification) => {
-    // Marquer comme lu
-    setNotifications(prev => 
-      prev.map(n => 
-        n.id === notification.id ? { ...n, read: true } : n
-      )
-    );
-
-    // Naviguer vers la transaction si applicable
     if (notification.transactionId) {
-      if (notification.type === 'message') {
-        router.push(`/chat/${notification.transactionId}`);
-      } else {
-        router.push(`/transaction/${notification.transactionId}`);
-      }
+      router.push(`/transaction/${notification.transactionId}`);
     }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(prev => 
-      prev.map(n => ({ ...n, read: true }))
-    );
-  };
-
-  const unreadCount = notifications.filter(n => !n.read).length;
-
-  const renderNotification = ({ item }: { item: Notification }) => (
-    <TouchableOpacity 
-      style={[
-        styles.notificationItem,
-        !item.read && styles.unreadNotification
-      ]}
-      onPress={() => handleNotificationPress(item)}
-    >
-      <View style={styles.notificationIcon}>
-        {getNotificationIcon(item.type)}
-      </View>
-      <View style={styles.notificationContent}>
-        <View style={styles.notificationHeader}>
-          <Text style={[
-            styles.notificationTitle,
-            !item.read && styles.unreadTitle
-          ]}>
-            {item.title}
-          </Text>
-          <Text style={styles.notificationTime}>
-            {formatTime(item.timestamp)}
-          </Text>
-        </View>
-        <Text style={styles.notificationMessage} numberOfLines={2}>
-          {item.message}
-        </Text>
-      </View>
-      {!item.read && <View style={styles.unreadDot} />}
-    </TouchableOpacity>
-  );
-
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <ArrowLeft color="#374151" size={24} />
+        <TouchableOpacity onPress={() => router.back()}>
+          <ArrowLeft size={24} color="#000" />
         </TouchableOpacity>
         <Text style={styles.title}>Notifications</Text>
-        <TouchableOpacity 
-          style={styles.settingsButton}
-          onPress={() => {/* Ouvrir les paramètres de notifications */}}
-        >
-          <Settings color="#374151" size={24} />
-        </TouchableOpacity>
+        <View style={styles.placeholder} />
       </View>
 
-      {unreadCount > 0 && (
-        <View style={styles.unreadBanner}>
-          <Text style={styles.unreadText}>
-            {unreadCount} notification{unreadCount > 1 ? 's' : ''} non lue{unreadCount > 1 ? 's' : ''}
-          </Text>
-          <TouchableOpacity onPress={markAllAsRead}>
-            <Text style={styles.markAllReadText}>Tout marquer comme lu</Text>
+      <ScrollView style={styles.content}>
+        {notifications.map((notification) => (
+          <TouchableOpacity
+            key={notification.id}
+            style={[
+              styles.notificationItem,
+              !notification.read && styles.unreadNotification
+            ]}
+            onPress={() => handleNotificationPress(notification)}
+          >
+            <View style={styles.notificationIcon}>
+              {getNotificationIcon(notification.type)}
+            </View>
+
+            <View style={styles.notificationContent}>
+              <Text style={styles.notificationTitle}>{notification.title}</Text>
+              <Text style={styles.notificationMessage}>{notification.message}</Text>
+              <Text style={styles.notificationTime}>
+                {formatTimestamp(notification.timestamp)}
+              </Text>
+            </View>
+
+            {!notification.read && <View style={styles.unreadDot} />}
           </TouchableOpacity>
-        </View>
-      )}
-
-      <View style={styles.settingsSection}>
-        <Text style={styles.sectionTitle}>Paramètres de notification</Text>
-        <View style={styles.settingItem}>
-          <Text style={styles.settingLabel}>Notifications push</Text>
-          <Switch
-            value={pushEnabled}
-            onValueChange={setPushEnabled}
-            trackColor={{ false: '#E5E7EB', true: '#DBEAFE' }}
-            thumbColor={pushEnabled ? '#2563EB' : '#9CA3AF'}
-          />
-        </View>
-        <View style={styles.settingItem}>
-          <Text style={styles.settingLabel}>Notifications par email</Text>
-          <Switch
-            value={emailEnabled}
-            onValueChange={setEmailEnabled}
-            trackColor={{ false: '#E5E7EB', true: '#DBEAFE' }}
-            thumbColor={emailEnabled ? '#2563EB' : '#9CA3AF'}
-          />
-        </View>
-      </View>
-
-      <FlatList
-        data={notifications}
-        renderItem={renderNotification}
-        keyExtractor={(item) => item.id}
-        style={styles.notificationsList}
-        showsVerticalScrollIndicator={false}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-      />
-    </SafeAreaView>
+        ))}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -233,131 +143,63 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 20,
+    backgroundColor: 'white',
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  backButton: {
-    padding: 8,
+    borderBottomColor: '#E5E7EB',
   },
   title: {
     fontSize: 20,
-    fontFamily: 'Inter-SemiBold',
+    fontWeight: '600',
     color: '#111827',
   },
-  settingsButton: {
-    padding: 8,
+  placeholder: {
+    width: 24,
   },
-  unreadBanner: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#EFF6FF',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#DBEAFE',
-  },
-  unreadText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: '#1E40AF',
-  },
-  markAllReadText: {
-    fontSize: 14,
-    fontFamily: 'Inter-SemiBold',
-    color: '#2563EB',
-  },
-  settingsSection: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontFamily: 'Inter-SemiBold',
-    color: '#111827',
-    marginBottom: 16,
-  },
-  settingItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  settingLabel: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#374151',
-  },
-  notificationsList: {
+  content: {
     flex: 1,
   },
   notificationItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
+    padding: 16,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
   unreadNotification: {
-    backgroundColor: '#FEFEFE',
+    backgroundColor: '#F0F9FF',
   },
   notificationIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
+    marginRight: 12,
+    marginTop: 2,
   },
   notificationContent: {
     flex: 1,
   },
-  notificationHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 4,
-  },
   notificationTitle: {
     fontSize: 16,
-    fontFamily: 'Inter-Medium',
-    color: '#374151',
-    flex: 1,
-    marginRight: 8,
-  },
-  unreadTitle: {
-    fontFamily: 'Inter-SemiBold',
+    fontWeight: '600',
     color: '#111827',
-  },
-  notificationTime: {
-    fontSize: 12,
-    fontFamily: 'Inter-Regular',
-    color: '#9CA3AF',
+    marginBottom: 4,
   },
   notificationMessage: {
     fontSize: 14,
-    fontFamily: 'Inter-Regular',
     color: '#6B7280',
     lineHeight: 20,
+    marginBottom: 4,
+  },
+  notificationTime: {
+    fontSize: 12,
+    color: '#9CA3AF',
   },
   unreadDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: '#2563EB',
-    marginLeft: 8,
-    marginTop: 8,
-  },
-  separator: {
-    height: 1,
-    backgroundColor: '#F3F4F6',
-    marginLeft: 80,
+    marginTop: 4,
   },
 });

@@ -52,9 +52,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face'
       };
       
-      // Décommenter ces lignes pour simuler un utilisateur connecté
-      // setUser(demoUser);
-      // setIsAuthenticated(true);
+      // Connexion automatique avec l'utilisateur de démonstration
+      setUser(demoUser);
+      setIsAuthenticated(true);
     };
 
     checkAuthStatus();
