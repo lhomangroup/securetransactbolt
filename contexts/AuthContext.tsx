@@ -1,4 +1,6 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { UserService, CreateUserData } from '@/services/userService';
 
 export interface User {
   id: string;
@@ -19,6 +21,7 @@ interface AuthContextType {
   register: (userData: RegisterData) => Promise<boolean>;
   logout: () => void;
   updateProfile: (userData: Partial<User>) => void;
+  loading: boolean;
 }
 
 interface RegisterData {
@@ -34,27 +37,25 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // Simuler une vérification d'authentification au démarrage
   useEffect(() => {
-    // Dans une vraie app, on vérifierait le token stocké localement
     const checkAuthStatus = async () => {
-      // Simulation d'un utilisateur connecté pour les tests
-      const demoUser: User = {
-        id: '1',
-        email: 'alex.martin@gmail.com',
-        name: 'Alexandre Martin',
-        phone: '+33 6 12 34 56 78',
-        userType: 'both',
-        rating: 4.7,
-        totalTransactions: 28,
-        joinedDate: '2023-03-15',
-        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face'
-      };
-      
-      // Connexion automatique avec l'utilisateur de démonstration
-      setUser(demoUser);
-      setIsAuthenticated(true);
+      try {
+        // Vérifier si un utilisateur est déjà connecté
+        const storedUserId = localStorage.getItem('userId');
+        if (storedUserId) {
+          const userData = await UserService.getUserById(storedUserId);
+          if (userData) {
+            setUser(userData);
+            setIsAuthenticated(true);
+          }
+        }
+      } catch (error) {
+        console.error('Erreur lors de la vérification de l\'authentification:', error);
+      } finally {
+        setLoading(false);
+      }
     };
 
     checkAuthStatus();
@@ -62,62 +63,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      // Simulation d'appel API
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      setLoading(true);
       
-      const userData: User = {
-        id: '1',
-        email,
-        name: 'Alexandre Martin',
-        phone: '+33 6 12 34 56 78',
-        userType: 'both',
-        rating: 4.7,
-        totalTransactions: 28,
-        joinedDate: '2023-03-15',
-        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face'
-      };
+      // Récupérer l'utilisateur par email
+      const userData = await UserService.getUserByEmail(email);
       
-      setUser(userData);
-      setIsAuthenticated(true);
-      return true;
-    } catch (error) {
+      if (userData) {
+        // Dans une vraie app, on vérifierait le mot de passe hashé
+        // Pour la démo, on accepte tous les logins
+        setUser(userData);
+        setIsAuthenticated(true);
+        localStorage.setItem('userId', userData.id);
+        return true;
+      }
+      
       return false;
+    } catch (error) {
+      console.error('Erreur lors de la connexion:', error);
+      return false;
+    } finally {
+      setLoading(false);
     }
   };
 
   const register = async (userData: RegisterData): Promise<boolean> => {
     try {
-      // Simulation d'appel API
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      setLoading(true);
       
-      const newUser: User = {
-        id: Date.now().toString(),
-        email: userData.email,
-        name: userData.name,
-        phone: userData.phone,
-        userType: userData.userType,
-        rating: 0,
-        totalTransactions: 0,
-        joinedDate: new Date().toISOString().split('T')[0],
-      };
+      const newUser = await UserService.createUser(userData);
       
       setUser(newUser);
       setIsAuthenticated(true);
+      localStorage.setItem('userId', newUser.id);
       return true;
     } catch (error) {
+      console.error('Erreur lors de l\'inscription:', error);
       return false;
+    } finally {
+      setLoading(false);
     }
   };
 
   const logout = () => {
     setUser(null);
     setIsAuthenticated(false);
-    // Clear any stored auth data if using AsyncStorage in the future
+    localStorage.removeItem('userId');
   };
 
-  const updateProfile = (userData: Partial<User>) => {
+  const updateProfile = async (userData: Partial<User>) => {
     if (user) {
-      setUser({ ...user, ...userData });
+      try {
+        const updatedUser = await UserService.updateUser(user.id, userData);
+        setUser(updatedUser);
+      } catch (error) {
+        console.error('Erreur lors de la mise à jour du profil:', error);
+      }
     }
   };
 
@@ -129,6 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       register,
       logout,
       updateProfile,
+      loading,
     }}>
       {children}
     </AuthContext.Provider>
