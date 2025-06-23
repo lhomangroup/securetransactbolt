@@ -42,13 +42,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Simulation d'un utilisateur connecté pour les tests
       const demoUser: User = {
         id: '1',
-        email: 'demo@secureTransact.com',
-        name: 'Utilisateur Démo',
+        email: 'alex.martin@gmail.com',
+        name: 'Alexandre Martin',
         phone: '+33 6 12 34 56 78',
         userType: 'both',
-        rating: 4.8,
-        totalTransactions: 15,
-        joinedDate: '2023-01-15',
+        rating: 4.7,
+        totalTransactions: 28,
+        joinedDate: '2023-03-15',
+        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face'
       };
       
       // Décommenter ces lignes pour simuler un utilisateur connecté
@@ -67,12 +68,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userData: User = {
         id: '1',
         email,
-        name: 'Utilisateur Connecté',
+        name: 'Alexandre Martin',
         phone: '+33 6 12 34 56 78',
         userType: 'both',
-        rating: 4.8,
-        totalTransactions: 15,
-        joinedDate: '2023-01-15',
+        rating: 4.7,
+        totalTransactions: 28,
+        joinedDate: '2023-03-15',
+        avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face'
       };
       
       setUser(userData);
