@@ -5,7 +5,7 @@ import { ArrowLeft, Camera, X } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTransactions } from '@/contexts/TransactionContext';
-import * as ImagePicker from 'expo-image-picker';
+// import * as ImagePicker from 'expo-image-picker';
 
 export default function CreateTransactionScreen() {
   const router = useRouter();
