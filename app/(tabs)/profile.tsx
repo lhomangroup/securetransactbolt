@@ -20,7 +20,7 @@ export default function ProfileScreen() {
           style: 'destructive',
           onPress: () => {
             logout();
-            router.replace('/(auth)');
+            router.replace('/(auth)/');
           }
         },
       ]

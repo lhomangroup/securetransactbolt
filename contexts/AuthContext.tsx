@@ -110,6 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setUser(null);
     setIsAuthenticated(false);
+    // Clear any stored auth data if using AsyncStorage in the future
   };
 
   const updateProfile = (userData: Partial<User>) => {
