@@ -1,5 +1,4 @@
-
-import pool from './database';
+import ApiService from './apiService';
 import { User } from '@/contexts/AuthContext';
 
 export interface CreateUserData {
@@ -12,49 +11,28 @@ export interface CreateUserData {
 
 export class UserService {
   static async createUser(userData: CreateUserData): Promise<User> {
-    const query = `
-      INSERT INTO users (email, password, name, phone, user_type, rating, total_transactions, joined_date)
-      VALUES ($1, $2, $3, $4, $5, 0, 0, CURRENT_DATE)
-      RETURNING id, email, name, phone, user_type as userType, rating, total_transactions as totalTransactions, joined_date as joinedDate
-    `;
-    
-    const values = [userData.email, userData.password, userData.name, userData.phone, userData.userType];
-    const result = await pool.query(query, values);
-    return result.rows[0];
+    return ApiService.register(userData);
   }
 
   static async getUserByEmail(email: string): Promise<User | null> {
-    const query = `
-      SELECT id, email, name, phone, user_type as userType, rating, total_transactions as totalTransactions, joined_date as joinedDate
-      FROM users WHERE email = $1
-    `;
-    
-    const result = await pool.query(query, [email]);
-    return result.rows[0] || null;
+    try {
+      // Cette méthode n'est plus directement disponible via l'API pour des raisons de sécurité
+      // Elle est maintenant gérée via la route de login
+      return null;
+    } catch (error) {
+      return null;
+    }
   }
 
   static async getUserById(id: string): Promise<User | null> {
-    const query = `
-      SELECT id, email, name, phone, user_type as userType, rating, total_transactions as totalTransactions, joined_date as joinedDate
-      FROM users WHERE id = $1
-    `;
-    
-    const result = await pool.query(query, [id]);
-    return result.rows[0] || null;
+    try {
+      return await ApiService.getUserById(id);
+    } catch (error) {
+      return null;
+    }
   }
 
   static async updateUser(id: string, userData: Partial<User>): Promise<User> {
-    const fields = Object.keys(userData).filter(key => key !== 'id');
-    const values = fields.map(field => userData[field as keyof User]);
-    const setClause = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
-    
-    const query = `
-      UPDATE users SET ${setClause}
-      WHERE id = $1
-      RETURNING id, email, name, phone, user_type as userType, rating, total_transactions as totalTransactions, joined_date as joinedDate
-    `;
-    
-    const result = await pool.query(query, [id, ...values]);
-    return result.rows[0];
+    return ApiService.updateUser(id, userData);
   }
 }

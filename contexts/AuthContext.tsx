@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { UserService, CreateUserData } from '@/services/userService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import ApiService from '@/services/apiService';
 
 export interface User {
   id: string;
@@ -42,10 +43,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
-        // Vérifier si un utilisateur est déjà connecté
-        const storedUserId = localStorage.getItem('userId');
-        if (storedUserId) {
-          const userData = await UserService.getUserById(storedUserId);
+        const token = await AsyncStorage.getItem('authToken');
+        const storedUserId = await AsyncStorage.getItem('userId');
+        
+        if (token && storedUserId) {
+          const userData = await ApiService.getUserById(storedUserId);
           if (userData) {
             setUser(userData);
             setIsAuthenticated(true);
@@ -53,6 +55,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (error) {
         console.error('Erreur lors de la vérification de l\'authentification:', error);
+        // Si l'erreur est due à un token invalide, on nettoie le stockage
+        await AsyncStorage.multiRemove(['authToken', 'userId']);
       } finally {
         setLoading(false);
       }
@@ -65,19 +69,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
       
-      // Récupérer l'utilisateur par email
-      const userData = await UserService.getUserByEmail(email);
+      const userData = await ApiService.login(email, password);
       
-      if (userData) {
-        // Dans une vraie app, on vérifierait le mot de passe hashé
-        // Pour la démo, on accepte tous les logins
-        setUser(userData);
-        setIsAuthenticated(true);
-        localStorage.setItem('userId', userData.id);
-        return true;
-      }
-      
-      return false;
+      setUser(userData);
+      setIsAuthenticated(true);
+      await AsyncStorage.setItem('userId', userData.id);
+      return true;
     } catch (error) {
       console.error('Erreur lors de la connexion:', error);
       return false;
@@ -90,11 +87,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
       
-      const newUser = await UserService.createUser(userData);
+      const newUser = await ApiService.register(userData);
       
       setUser(newUser);
       setIsAuthenticated(true);
-      localStorage.setItem('userId', newUser.id);
+      await AsyncStorage.setItem('userId', newUser.id);
       return true;
     } catch (error) {
       console.error('Erreur lors de l\'inscription:', error);
@@ -104,16 +101,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    setIsAuthenticated(false);
-    localStorage.removeItem('userId');
+  const logout = async () => {
+    try {
+      await ApiService.logout();
+      await AsyncStorage.multiRemove(['userId']);
+      setUser(null);
+      setIsAuthenticated(false);
+    } catch (error) {
+      console.error('Erreur lors de la déconnexion:', error);
+    }
   };
 
   const updateProfile = async (userData: Partial<User>) => {
     if (user) {
       try {
-        const updatedUser = await UserService.updateUser(user.id, userData);
+        const updatedUser = await ApiService.updateUser(user.id, userData);
         setUser(updatedUser);
       } catch (error) {
         console.error('Erreur lors de la mise à jour du profil:', error);

@@ -1,5 +1,6 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { TransactionService } from '@/services/transactionService';
+import ApiService from '@/services/apiService';
 
 export type TransactionStatus = 
   | 'pending_acceptance'
@@ -67,7 +68,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
   const loadTransactions = async () => {
     try {
       setLoading(true);
-      const allTransactions = await TransactionService.getAllTransactions();
+      const allTransactions = await ApiService.getAllTransactions();
       setTransactions(allTransactions);
     } catch (error) {
       console.error('Erreur lors du chargement des transactions:', error);
@@ -78,7 +79,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
 
   const createTransaction = async (transactionData: Omit<Transaction, 'id' | 'createdDate' | 'lastUpdate'>): Promise<string> => {
     try {
-      const newTransaction = await TransactionService.createTransaction(transactionData);
+      const newTransaction = await ApiService.createTransaction(transactionData);
 
       setTransactions(prev => [newTransaction, ...prev]);
 
@@ -94,7 +95,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
 
   const updateTransactionStatus = async (id: string, status: TransactionStatus, disputeReason?: string) => {
     try {
-      const updatedTransaction = await TransactionService.updateTransactionStatus(id, status, disputeReason);
+      const updatedTransaction = await ApiService.updateTransactionStatus(id, status, disputeReason);
 
       setTransactions(prev => prev.map(transaction => 
         transaction.id === id ? updatedTransaction : transaction
@@ -121,7 +122,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
 
   const sendMessage = async (transactionId: string, senderId: string, senderName: string, message: string) => {
     try {
-      const newMessage = await TransactionService.createMessage({
+      const newMessage = await ApiService.createMessage({
         transactionId,
         senderId,
         senderName,
@@ -140,7 +141,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
 
   const sendSystemMessage = async (transactionId: string, message: string) => {
     try {
-      const systemMessage = await TransactionService.createMessage({
+      const systemMessage = await ApiService.createMessage({
         transactionId,
         senderId: 'system',
         senderName: 'SecureTransact',
@@ -159,7 +160,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
 
   const loadTransactionMessages = async (transactionId: string) => {
     try {
-      const transactionMessages = await TransactionService.getTransactionMessages(transactionId);
+      const transactionMessages = await ApiService.getTransactionMessages(transactionId);
       setMessages(prev => ({
         ...prev,
         [transactionId]: transactionMessages,
