@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Camera, X } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTransactions } from '@/contexts/TransactionContext';
+import * as ImagePicker from 'expo-image-picker';
 
 export default function CreateTransactionScreen() {
   const router = useRouter();
@@ -21,8 +22,41 @@ export default function CreateTransactionScreen() {
     userRole: 'seller' as 'buyer' | 'seller',
   });
 
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+
   const updateFormData = <K extends keyof typeof formData>(key: K, value: typeof formData[K]) => {
     setFormData(prev => ({ ...prev, [key]: value }));
+  };
+
+  const pickImage = async () => {
+    // Demander les permissions
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (permissionResult.granted === false) {
+      Alert.alert('Permission requise', 'L\'accès à la galerie est nécessaire pour ajouter des photos.');
+      return;
+    }
+
+    // Ouvrir la galerie
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      const newImage = result.assets[0].uri;
+      if (selectedImages.length < 5) { // Limite de 5 photos
+        setSelectedImages(prev => [...prev, newImage]);
+      } else {
+        Alert.alert('Limite atteinte', 'Vous ne pouvez ajouter que 5 photos maximum.');
+      }
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setSelectedImages(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = () => {
@@ -224,9 +258,28 @@ export default function CreateTransactionScreen() {
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Photos (optionnel)</Text>
-            <TouchableOpacity style={styles.photoButton}>
+            
+            {selectedImages.length > 0 && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imagePreviewContainer}>
+                {selectedImages.map((uri, index) => (
+                  <View key={index} style={styles.imagePreviewWrapper}>
+                    <Image source={{ uri }} style={styles.imagePreview} />
+                    <TouchableOpacity 
+                      style={styles.removeImageButton}
+                      onPress={() => removeImage(index)}
+                    >
+                      <X color="#FFFFFF" size={16} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+            
+            <TouchableOpacity style={styles.photoButton} onPress={pickImage}>
               <Camera color="#9CA3AF" size={24} />
-              <Text style={styles.photoButtonText}>Ajouter des photos</Text>
+              <Text style={styles.photoButtonText}>
+                {selectedImages.length > 0 ? `Ajouter une photo (${selectedImages.length}/5)` : 'Ajouter des photos'}
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -381,6 +434,29 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Medium',
     color: '#9CA3AF',
     marginTop: 8,
+  },
+  imagePreviewContainer: {
+    marginBottom: 16,
+  },
+  imagePreviewWrapper: {
+    position: 'relative',
+    marginRight: 12,
+  },
+  imagePreview: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    backgroundColor: '#EF4444',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   submitButton: {
     backgroundColor: '#2563EB',
