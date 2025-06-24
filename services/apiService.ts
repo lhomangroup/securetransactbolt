@@ -75,18 +75,10 @@ class ApiService {
   static async login(email: string, password: string) {
     try {
       console.log('Tentative de connexion avec:', email);
-      const response = await this.request('/auth/login', {
+      const response = await this.request('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       });
-
-      console.log('Réponse statut:', response.status);
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        console.log('Erreur serveur:', errorData);
-        throw new Error(`Erreur lors de la connexion: ${response.status}`);
-      }
 
       const data = await response.json();
       await AsyncStorage.setItem('authToken', data.token);
@@ -107,18 +99,10 @@ class ApiService {
   static async register(userData: any) {
     try {
       console.log('Tentative d\'inscription avec:', userData.email);
-      const response = await this.request('/auth/register', {
+      const response = await this.request('/api/auth/register', {
         method: 'POST',
         body: JSON.stringify(userData),
       });
-
-      console.log('Réponse statut:', response.status);
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        console.log('Erreur serveur:', errorData);
-        throw new Error(`Erreur lors de l'inscription: ${response.status}`);
-      }
 
       const data = await response.json();
       await AsyncStorage.setItem('authToken', data.token);
@@ -142,11 +126,11 @@ class ApiService {
 
   // Utilisateurs
   static async getUserById(id: string) {
-    return this.request(`/users/${id}`);
+    return this.request(`/api/users/${id}`);
   }
 
   static async updateUser(id: string, userData: any) {
-    return this.request(`/users/${id}`, {
+    return this.request(`/api/users/${id}`, {
       method: 'PUT',
       body: JSON.stringify(userData),
     });
@@ -154,22 +138,22 @@ class ApiService {
 
   // Transactions
   static async getAllTransactions() {
-    return this.request('/transactions');
+    return this.request('/api/transactions');
   }
 
   static async getUserTransactions(userId: string) {
-    return this.request(`/transactions/user/${userId}`);
+    return this.request(`/api/transactions/user/${userId}`);
   }
 
   static async createTransaction(transactionData: any) {
-    return this.request('/transactions', {
+    return this.request('/api/transactions', {
       method: 'POST',
       body: JSON.stringify(transactionData),
     });
   }
 
   static async updateTransactionStatus(id: string, status: string, disputeReason?: string) {
-    return this.request(`/transactions/${id}/status`, {
+    return this.request(`/api/transactions/${id}/status`, {
       method: 'PUT',
       body: JSON.stringify({ status, disputeReason }),
     });
@@ -177,11 +161,11 @@ class ApiService {
 
   // Messages
   static async getTransactionMessages(transactionId: string) {
-    return this.request(`/transactions/${transactionId}/messages`);
+    return this.request(`/api/transactions/${transactionId}/messages`);
   }
 
   static async createMessage(messageData: any) {
-    return this.request('/messages', {
+    return this.request('/api/messages', {
       method: 'POST',
       body: JSON.stringify(messageData),
     });
