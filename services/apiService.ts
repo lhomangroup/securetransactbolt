@@ -1,4 +1,3 @@
-
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://YOUR_REPL_NAME.YOUR_USERNAME.repl.co/api';
@@ -6,7 +5,7 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://YOUR_REPL_NAME.
 // Configuration pour les requêtes
 const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
   const url = `${API_BASE_URL}${endpoint}`;
-  
+
   const defaultHeaders = {
     'Content-Type': 'application/json',
     ...options.headers,
@@ -39,7 +38,7 @@ class ApiService {
 
   private static async request(endpoint: string, options: RequestInit = {}) {
     const authHeaders = await this.getAuthHeader();
-    
+
     try {
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         headers: {
@@ -72,23 +71,53 @@ class ApiService {
 
   // Authentification
   static async login(email: string, password: string) {
-    const response = await this.request('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    });
-    
-    await AsyncStorage.setItem('authToken', response.token);
-    return response.user;
+    try {
+      console.log('Tentative de connexion avec:', email);
+      const response = await this.request('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
+
+      console.log('Réponse statut:', response.status);
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.log('Erreur serveur:', errorData);
+        throw new Error(`Erreur lors de la connexion: ${response.status}`);
+      }
+
+      const data = await response.json();
+      await AsyncStorage.setItem('authToken', data.token);
+      return data.user;
+    } catch (error) {
+      console.error('Erreur détaillée connexion:', error);
+      throw error;
+    }
   }
 
   static async register(userData: any) {
-    const response = await this.request('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify(userData),
-    });
-    
-    await AsyncStorage.setItem('authToken', response.token);
-    return response.user;
+    try {
+      console.log('Tentative d\'inscription avec:', userData.email);
+      const response = await this.request('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify(userData),
+      });
+
+      console.log('Réponse statut:', response.status);
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.log('Erreur serveur:', errorData);
+        throw new Error(`Erreur lors de l'inscription: ${response.status}`);
+      }
+
+      const data = await response.json();
+      await AsyncStorage.setItem('authToken', data.token);
+      return data.user;
+    } catch (error) {
+      console.error('Erreur détaillée inscription:', error);
+      throw error;
+    }
   }
 
   static async logout() {
