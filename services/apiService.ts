@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://YOUR_REPL_NAME.YOUR_USERNAME.repl.co/api';
+const API_BASE_URL = process.env.NODE_ENV === 'production' || typeof window === 'undefined' 
+  ? 'http://0.0.0.0:5000' 
+  : `${window.location.protocol}//${window.location.hostname}:5000`;
 
 // Configuration pour les requêtes
 const apiRequest = async (endpoint: string, options: RequestInit = {}) => {

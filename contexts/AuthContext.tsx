@@ -75,9 +75,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsAuthenticated(true);
       await AsyncStorage.setItem('userId', userData.id);
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur lors de la connexion:', error);
-      return false;
+      
+      // Lancer l'erreur pour que le composant puisse l'afficher
+      if (error.message) {
+        throw new Error(error.message);
+      } else if (typeof error === 'string') {
+        throw new Error(error);
+      } else {
+        throw new Error('Erreur de connexion au serveur. Veuillez réessayer.');
+      }
     } finally {
       setLoading(false);
     }
@@ -93,9 +101,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsAuthenticated(true);
       await AsyncStorage.setItem('userId', newUser.id);
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur lors de l\'inscription:', error);
-      return false;
+      
+      // Lancer l'erreur pour que le composant puisse l'afficher
+      if (error.message) {
+        throw new Error(error.message);
+      } else if (typeof error === 'string') {
+        throw new Error(error);
+      } else {
+        throw new Error('Erreur de connexion au serveur. Veuillez réessayer.');
+      }
     } finally {
       setLoading(false);
     }

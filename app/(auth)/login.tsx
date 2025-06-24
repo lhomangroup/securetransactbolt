@@ -22,13 +22,24 @@ export default function LoginScreen() {
     setIsLoading(true);
     try {
       const success = await login(email, password);
+
       if (success) {
-        router.replace('/(tabs)');
+        Alert.alert(
+          'Connexion réussie !', 
+          'Bienvenue de retour !',
+          [
+            {
+              text: 'Continuer',
+              onPress: () => router.replace('/(tabs)')
+            }
+          ]
+        );
       } else {
         Alert.alert('Erreur', 'Email ou mot de passe incorrect');
       }
-    } catch (error) {
-      Alert.alert('Erreur', 'Une erreur est survenue');
+    } catch (error: any) {
+      const errorMessage = error.message || 'Une erreur est survenue lors de la connexion';
+      Alert.alert('Erreur', errorMessage);
     } finally {
       setIsLoading(false);
     }

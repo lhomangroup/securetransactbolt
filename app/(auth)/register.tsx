@@ -53,12 +53,22 @@ export default function RegisterScreen() {
       });
 
       if (success) {
-        router.replace('/(tabs)');
+        Alert.alert(
+          'Compte créé !', 
+          'Votre compte a été créé avec succès. Bienvenue !',
+          [
+            {
+              text: 'Continuer',
+              onPress: () => router.replace('/(tabs)')
+            }
+          ]
+        );
       } else {
         Alert.alert('Erreur', 'Impossible de créer le compte');
       }
-    } catch (error) {
-      Alert.alert('Erreur', 'Une erreur est survenue');
+    } catch (error: any) {
+      const errorMessage = error.message || 'Une erreur est survenue lors de la création du compte';
+      Alert.alert('Erreur', errorMessage);
     } finally {
       setIsLoading(false);
     }
