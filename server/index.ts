@@ -1,10 +1,8 @@
-
 import express from 'express';
 import cors from 'cors';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
-import pool from '../services/database';
 
 dotenv.config();
 
@@ -14,6 +12,11 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 app.use(cors());
 app.use(express.json());
+
+// Base de données en mémoire pour le développement
+let users: any[] = [];
+let transactions: any[] = [];
+let messages: any[] = [];
 
 // Middleware d'authentification
 const authenticateToken = (req: any, res: any, next: any) => {
@@ -37,8 +40,8 @@ app.post('/api/auth/register', async (req, res) => {
     const { email, password, name, phone, userType } = req.body;
 
     // Vérifier si l'utilisateur existe déjà
-    const existingUser = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-    if (existingUser.rows.length > 0) {
+    const existingUser = users.find(u => u.email === email);
+    if (existingUser) {
       return res.status(400).json({ error: 'Cet email est déjà utilisé' });
     }
 
@@ -46,30 +49,30 @@ app.post('/api/auth/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Créer l'utilisateur
-    const query = `
-      INSERT INTO users (email, password, name, phone, user_type, rating, total_transactions, joined_date)
-      VALUES ($1, $2, $3, $4, $5, 0, 0, CURRENT_DATE)
-      RETURNING id, email, name, phone, user_type as userType, rating, total_transactions as totalTransactions, joined_date as joinedDate
-    `;
-    
-    const values = [email, hashedPassword, name, phone, userType];
-    const result = await pool.query(query, values);
-    const user = result.rows[0];
+    const user = {
+      id: users.length + 1,
+      email,
+      password: hashedPassword,
+      name,
+      phone,
+      userType,
+      rating: 0,
+      totalTransactions: 0,
+      joinedDate: new Date().toISOString().split('T')[0]
+    };
+
+    users.push(user);
+
+    // Supprimer le mot de passe de la réponse
+    const { password: _, ...userResponse } = user;
 
     // Générer le token JWT
     const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
 
-    res.status(201).json({ user, token });
+    res.status(201).json({ user: userResponse, token });
   } catch (error: any) {
     console.error('Erreur lors de l\'inscription:', error);
-    
-    if (error.code === 'ECONNREFUSED') {
-      res.status(500).json({ error: 'Base de données non disponible. Veuillez configurer PostgreSQL.' });
-    } else if (error.code === '23505') {
-      res.status(400).json({ error: 'Cet email est déjà utilisé' });
-    } else {
-      res.status(500).json({ error: 'Erreur lors de la création du compte' });
-    }
+    res.status(500).json({ error: 'Erreur lors de la création du compte' });
   }
 });
 
@@ -78,17 +81,11 @@ app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
 
     // Récupérer l'utilisateur
-    const query = `
-      SELECT id, email, name, phone, user_type as userType, rating, total_transactions as totalTransactions, joined_date as joinedDate, password
-      FROM users WHERE email = $1
-    `;
-    const result = await pool.query(query, [email]);
-    
-    if (result.rows.length === 0) {
+    const user = users.find(u => u.email === email);
+
+    if (!user) {
       return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
     }
-
-    const user = result.rows[0];
 
     // Vérifier le mot de passe
     const passwordMatch = await bcrypt.compare(password, user.password);
@@ -97,20 +94,15 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     // Supprimer le mot de passe de la réponse
-    delete user.password;
+    const { password: _, ...userResponse } = user;
 
     // Générer le token JWT
     const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
 
-    res.json({ user, token });
+    res.json({ user: userResponse, token });
   } catch (error: any) {
     console.error('Erreur lors de la connexion:', error);
-    
-    if (error.code === 'ECONNREFUSED') {
-      res.status(500).json({ error: 'Base de données non disponible. Veuillez configurer PostgreSQL.' });
-    } else {
-      res.status(500).json({ error: 'Erreur lors de la connexion' });
-    }
+    res.status(500).json({ error: 'Erreur lors de la connexion' });
   }
 });
 
@@ -118,17 +110,14 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/users/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const query = `
-      SELECT id, email, name, phone, user_type as userType, rating, total_transactions as totalTransactions, joined_date as joinedDate
-      FROM users WHERE id = $1
-    `;
-    const result = await pool.query(query, [id]);
-    
-    if (result.rows.length === 0) {
+    const user = users.find(u => u.id === parseInt(id));
+
+    if (!user) {
       return res.status(404).json({ error: 'Utilisateur non trouvé' });
     }
 
-    res.json(result.rows[0]);
+    const { password: _, ...userResponse } = user;
+    res.json(userResponse);
   } catch (error) {
     console.error('Erreur lors de la récupération de l\'utilisateur:', error);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -139,19 +128,17 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
-    
-    const fields = Object.keys(updates).filter(key => key !== 'id');
-    const values = fields.map(field => updates[field]);
-    const setClause = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
-    
-    const query = `
-      UPDATE users SET ${setClause}
-      WHERE id = $1
-      RETURNING id, email, name, phone, user_type as userType, rating, total_transactions as totalTransactions, joined_date as joinedDate
-    `;
-    
-    const result = await pool.query(query, [id, ...values]);
-    res.json(result.rows[0]);
+
+    const userIndex = users.findIndex(u => u.id === parseInt(id));
+    if (userIndex === -1) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+
+    // Mettre à jour l'utilisateur
+    users[userIndex] = { ...users[userIndex], ...updates };
+    const { password: _, ...userResponse } = users[userIndex];
+
+    res.json(userResponse);
   } catch (error) {
     console.error('Erreur lors de la mise à jour de l\'utilisateur:', error);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -161,16 +148,7 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
 // Routes transactions
 app.get('/api/transactions', authenticateToken, async (req, res) => {
   try {
-    const query = `
-      SELECT id, title, description, price, status, buyer_id as buyerId, seller_id as sellerId, 
-             buyer_name as buyerName, seller_name as sellerName, created_date as createdDate, 
-             expected_delivery as expectedDelivery, inspection_period as inspectionPeriod, 
-             delivery_address as deliveryAddress, dispute_reason as disputeReason, last_update as lastUpdate
-      FROM transactions
-      ORDER BY created_date DESC
-    `;
-    const result = await pool.query(query);
-    res.json(result.rows);
+    res.json(transactions);
   } catch (error) {
     console.error('Erreur lors de la récupération des transactions:', error);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -180,17 +158,10 @@ app.get('/api/transactions', authenticateToken, async (req, res) => {
 app.get('/api/transactions/user/:userId', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.params;
-    const query = `
-      SELECT id, title, description, price, status, buyer_id as buyerId, seller_id as sellerId, 
-             buyer_name as buyerName, seller_name as sellerName, created_date as createdDate, 
-             expected_delivery as expectedDelivery, inspection_period as inspectionPeriod, 
-             delivery_address as deliveryAddress, dispute_reason as disputeReason, last_update as lastUpdate
-      FROM transactions 
-      WHERE buyer_id = $1 OR seller_id = $1
-      ORDER BY created_date DESC
-    `;
-    const result = await pool.query(query, [userId]);
-    res.json(result.rows);
+    const userTransactions = transactions.filter(
+      t => t.buyerId === parseInt(userId) || t.sellerId === parseInt(userId)
+    );
+    res.json(userTransactions);
   } catch (error) {
     console.error('Erreur lors de la récupération des transactions utilisateur:', error);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -200,33 +171,15 @@ app.get('/api/transactions/user/:userId', authenticateToken, async (req, res) =>
 app.post('/api/transactions', authenticateToken, async (req, res) => {
   try {
     const transactionData = req.body;
-    const query = `
-      INSERT INTO transactions (title, description, price, status, buyer_id, seller_id, buyer_name, seller_name, 
-                               expected_delivery, inspection_period, delivery_address, dispute_reason)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-      RETURNING id, title, description, price, status, buyer_id as buyerId, seller_id as sellerId, 
-                buyer_name as buyerName, seller_name as sellerName, created_date as createdDate, 
-                expected_delivery as expectedDelivery, inspection_period as inspectionPeriod, 
-                delivery_address as deliveryAddress, dispute_reason as disputeReason, last_update as lastUpdate
-    `;
-    
-    const values = [
-      transactionData.title,
-      transactionData.description,
-      transactionData.price,
-      transactionData.status,
-      transactionData.buyerId,
-      transactionData.sellerId,
-      transactionData.buyerName,
-      transactionData.sellerName,
-      transactionData.expectedDelivery,
-      transactionData.inspectionPeriod,
-      transactionData.deliveryAddress,
-      transactionData.disputeReason
-    ];
-    
-    const result = await pool.query(query, values);
-    res.status(201).json(result.rows[0]);
+    const transaction = {
+      id: transactions.length + 1,
+      ...transactionData,
+      createdDate: new Date().toISOString().split('T')[0],
+      lastUpdate: new Date().toISOString().split('T')[0]
+    };
+
+    transactions.push(transaction);
+    res.status(201).json(transaction);
   } catch (error) {
     console.error('Erreur lors de la création de la transaction:', error);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -237,19 +190,20 @@ app.put('/api/transactions/:id/status', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const { status, disputeReason } = req.body;
-    
-    const query = `
-      UPDATE transactions 
-      SET status = $2, dispute_reason = $3, last_update = CURRENT_DATE
-      WHERE id = $1
-      RETURNING id, title, description, price, status, buyer_id as buyerId, seller_id as sellerId, 
-                buyer_name as buyerName, seller_name as sellerName, created_date as createdDate, 
-                expected_delivery as expectedDelivery, inspection_period as inspectionPeriod, 
-                delivery_address as deliveryAddress, dispute_reason as disputeReason, last_update as lastUpdate
-    `;
-    
-    const result = await pool.query(query, [id, status, disputeReason]);
-    res.json(result.rows[0]);
+
+    const transactionIndex = transactions.findIndex(t => t.id === parseInt(id));
+    if (transactionIndex === -1) {
+      return res.status(404).json({ error: 'Transaction non trouvée' });
+    }
+
+    transactions[transactionIndex] = {
+      ...transactions[transactionIndex],
+      status,
+      disputeReason,
+      lastUpdate: new Date().toISOString().split('T')[0]
+    };
+
+    res.json(transactions[transactionIndex]);
   } catch (error) {
     console.error('Erreur lors de la mise à jour du statut:', error);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -260,15 +214,8 @@ app.put('/api/transactions/:id/status', authenticateToken, async (req, res) => {
 app.get('/api/transactions/:id/messages', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const query = `
-      SELECT id, transaction_id as transactionId, sender_id as senderId, sender_name as senderName, 
-             message, timestamp, type
-      FROM messages 
-      WHERE transaction_id = $1
-      ORDER BY timestamp ASC
-    `;
-    const result = await pool.query(query, [id]);
-    res.json(result.rows);
+    const transactionMessages = messages.filter(m => m.transactionId === parseInt(id));
+    res.json(transactionMessages);
   } catch (error) {
     console.error('Erreur lors de la récupération des messages:', error);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -278,23 +225,14 @@ app.get('/api/transactions/:id/messages', authenticateToken, async (req, res) =>
 app.post('/api/messages', authenticateToken, async (req, res) => {
   try {
     const messageData = req.body;
-    const query = `
-      INSERT INTO messages (transaction_id, sender_id, sender_name, message, type)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING id, transaction_id as transactionId, sender_id as senderId, sender_name as senderName, 
-                message, timestamp, type
-    `;
-    
-    const values = [
-      messageData.transactionId,
-      messageData.senderId,
-      messageData.senderName,
-      messageData.message,
-      messageData.type
-    ];
-    
-    const result = await pool.query(query, values);
-    res.status(201).json(result.rows[0]);
+    const message = {
+      id: messages.length + 1,
+      ...messageData,
+      timestamp: new Date().toISOString()
+    };
+
+    messages.push(message);
+    res.status(201).json(message);
   } catch (error) {
     console.error('Erreur lors de la création du message:', error);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -303,4 +241,5 @@ app.post('/api/messages', authenticateToken, async (req, res) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Serveur API démarré sur http://0.0.0.0:${PORT}`);
+  console.log('Mode: Base de données en mémoire (données temporaires)');
 });
