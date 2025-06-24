@@ -1,8 +1,22 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = process.env.NODE_ENV === 'production' || typeof window === 'undefined' 
-  ? 'http://0.0.0.0:5000' 
-  : `${window.location.protocol}//${window.location.hostname}:5000`;
+// Configuration de l'URL de base selon l'environnement
+const getApiBaseUrl = () => {
+  if (typeof window !== 'undefined') {
+    // En mode web/navigateur
+    const hostname = window.location.hostname;
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'http://localhost:5000';
+    }
+    return `${window.location.protocol}//${hostname}:5000`;
+  }
+  // En mode natif ou serveur
+  return 'http://0.0.0.0:5000';
+};
+
+const API_BASE_URL = getApiBaseUrl();
+
+console.log('🔗 API Base URL:', API_BASE_URL);
 
 // Configuration pour les requêtes
 const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
@@ -14,18 +28,29 @@ const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
   };
 
   try {
+    console.log(`📡 API Request: ${options.method || 'GET'} ${url}`);
+    
     const response = await fetch(url, {
       ...options,
       headers: defaultHeaders,
     });
 
+    console.log(`📡 API Response: ${response.status} ${response.statusText}`);
+
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+      } catch (e) {
+        // Si on ne peut pas parser la réponse JSON
+      }
+      throw new Error(errorMessage);
     }
 
     return await response.json();
   } catch (error) {
-    console.error('API Request failed:', error);
+    console.error('❌ API Request failed:', error);
     throw error;
   }
 };
@@ -42,6 +67,8 @@ class ApiService {
     const authHeaders = await this.getAuthHeader();
 
     try {
+      console.log(`📡 Making request to: ${API_BASE_URL}${endpoint}`);
+      
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         headers: {
           'Content-Type': 'application/json',
@@ -51,12 +78,15 @@ class ApiService {
         ...options,
       });
 
+      console.log(`📡 Response status: ${response.status}`);
+
       if (!response.ok) {
         let errorMessage = 'Erreur serveur';
 
         try {
           const errorData = await response.json();
           errorMessage = errorData.error || errorMessage;
+          console.log('❌ Error response:', errorData);
         } catch (e) {
           // Si on ne peut pas parser la réponse JSON, utiliser le message par défaut
           if (response.status === 401) {
@@ -71,12 +101,42 @@ class ApiService {
         throw new Error(errorMessage);
       }
 
-      return await response.json();
+      const data = await response.json();
+      console.log('✅ Response data:', data);
+      return data;
     } catch (error: any) {
-      if (error.name === 'TypeError' && error.message.includes('fetch')) {
-        throw new Error('Impossible de se connecter au serveur. Vérifiez votre connexion.');
+      console.error('❌ Request error:', error);
+      
+      if (error.name === 'TypeError' && (error.message.includes('fetch') || error.message.includes('Failed to fetch'))) {
+        throw new Error('Impossible de se connecter au serveur. Vérifiez que le serveur est démarré.');
       }
       throw error;
+    }
+  }
+
+  // Test de connectivité
+  static async testConnection() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/health`);
+      const data = await response.json();
+      console.log('✅ Serveur accessible:', data);
+      return true;
+    } catch (error) {
+      console.error('❌ Serveur non accessible:', error);
+      return false;
+    }
+  }
+
+  // Test de la base de données
+  static async testDatabase() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/db-test`);
+      const data = await response.json();
+      console.log('✅ Base de données accessible:', data);
+      return true;
+    } catch (error) {
+      console.error('❌ Base de données non accessible:', error);
+      return false;
     }
   }
 
@@ -84,6 +144,13 @@ class ApiService {
   static async login(email: string, password: string) {
     try {
       console.log('🔐 Tentative de connexion avec:', email);
+      
+      // Test de connectivité avant la requête
+      const isConnected = await this.testConnection();
+      if (!isConnected) {
+        throw new Error('Impossible de se connecter au serveur. Vérifiez que le serveur est démarré.');
+      }
+      
       const data = await this.request('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
@@ -100,13 +167,13 @@ class ApiService {
       console.error('❌ Erreur lors de la connexion:', error);
 
       // Gestion des erreurs réseau
-      if (error.message.includes('Failed to fetch') || error.message.includes('fetch')) {
-        throw new Error('Impossible de se connecter au serveur. Vérifiez votre connexion internet.');
+      if (error.message.includes('Failed to fetch') || error.message.includes('fetch') || error.message.includes('serveur')) {
+        throw new Error('Impossible de se connecter au serveur. Vérifiez que le serveur est démarré et accessible.');
       }
 
       // Gestion des erreurs de base de données
       if (error.message.includes('Base de données non disponible') || error.message.includes('PostgreSQL')) {
-        throw new Error('Service temporairement indisponible. Veuillez réessayer dans quelques instants.');
+        throw new Error('Service temporairement indisponible. Vérifiez la configuration de la base de données.');
       }
 
       // Gestion des erreurs d'authentification
@@ -122,6 +189,19 @@ class ApiService {
   static async register(userData: any) {
     try {
       console.log('📝 Tentative d\'inscription avec:', userData.email);
+      
+      // Test de connectivité avant la requête
+      const isConnected = await this.testConnection();
+      if (!isConnected) {
+        throw new Error('Impossible de se connecter au serveur. Vérifiez que le serveur est démarré.');
+      }
+
+      // Test de la base de données
+      const dbConnected = await this.testDatabase();
+      if (!dbConnected) {
+        throw new Error('Base de données non disponible. Vérifiez la configuration PostgreSQL.');
+      }
+      
       const data = await this.request('/api/auth/register', {
         method: 'POST',
         body: JSON.stringify(userData),
@@ -138,13 +218,13 @@ class ApiService {
       console.error('❌ Erreur lors de l\'inscription:', error);
 
       // Gestion des erreurs réseau
-      if (error.message.includes('Failed to fetch') || error.message.includes('fetch')) {
-        throw new Error('Impossible de se connecter au serveur. Vérifiez votre connexion internet.');
+      if (error.message.includes('Failed to fetch') || error.message.includes('fetch') || error.message.includes('serveur')) {
+        throw new Error('Impossible de se connecter au serveur. Vérifiez que le serveur est démarré et accessible.');
       }
 
       // Gestion des erreurs de base de données
-      if (error.message.includes('Base de données non disponible') || error.message.includes('PostgreSQL')) {
-        throw new Error('Service temporairement indisponible. Veuillez réessayer dans quelques instants.');
+      if (error.message.includes('Base de données non disponible') || error.message.includes('PostgreSQL') || error.message.includes('non initialisée')) {
+        throw new Error('Base de données non disponible. Vérifiez la configuration PostgreSQL et que les tables sont créées.');
       }
 
       // Gestion des erreurs de validation
@@ -154,6 +234,14 @@ class ApiService {
 
       if (error.message.includes('champs obligatoires')) {
         throw new Error('Tous les champs obligatoires doivent être remplis.');
+      }
+
+      if (error.message.includes('Format d\'email invalide')) {
+        throw new Error('Le format de l\'email n\'est pas valide.');
+      }
+
+      if (error.message.includes('mot de passe doit contenir')) {
+        throw new Error('Le mot de passe doit contenir au moins 6 caractères.');
       }
 
       // Erreur générique

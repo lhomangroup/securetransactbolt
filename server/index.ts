@@ -11,7 +11,10 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
-app.use(cors());
+app.use(cors({
+  origin: ['http://localhost:8081', 'http://localhost:3000', 'http://0.0.0.0:8081'],
+  credentials: true
+}));
 app.use(express.json());
 
 // Middleware d'authentification
@@ -30,10 +33,38 @@ const authenticateToken = (req: any, res: any, next: any) => {
   });
 };
 
+// Route de test pour vérifier la connexion
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    message: 'Serveur API fonctionnel',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Route de test de la base de données
+app.get('/api/db-test', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT NOW() as current_time');
+    res.json({ 
+      status: 'OK', 
+      message: 'Base de données connectée',
+      time: result.rows[0].current_time
+    });
+  } catch (error) {
+    console.error('Erreur de test DB:', error);
+    res.status(500).json({ 
+      status: 'ERROR', 
+      message: 'Erreur de connexion à la base de données',
+      error: error.message
+    });
+  }
+});
+
 // Route d'inscription
 app.post('/api/auth/register', async (req, res) => {
   try {
-    console.log('📝 Tentative d\'inscription:', req.body.email);
+    console.log('📝 Tentative d\'inscription:', req.body);
 
     const { email, password, name, phone, userType } = req.body;
 
@@ -41,7 +72,33 @@ app.post('/api/auth/register', async (req, res) => {
     if (!email || !password || !name || !userType) {
       console.log('❌ Données manquantes pour l\'inscription');
       return res.status(400).json({ 
+        success: false,
         error: 'Tous les champs obligatoires doivent être remplis' 
+      });
+    }
+
+    // Validation de l'email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Format d\'email invalide' 
+      });
+    }
+
+    // Validation du mot de passe
+    if (password.length < 6) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Le mot de passe doit contenir au moins 6 caractères' 
+      });
+    }
+
+    // Validation du type d'utilisateur
+    if (!['buyer', 'seller', 'both'].includes(userType)) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Type d\'utilisateur invalide' 
       });
     }
 
@@ -49,6 +106,7 @@ app.post('/api/auth/register', async (req, res) => {
     if (!pool) {
       console.log('❌ Base de données non disponible');
       return res.status(500).json({ 
+        success: false,
         error: 'Base de données non disponible. Veuillez configurer PostgreSQL.' 
       });
     }
@@ -56,25 +114,26 @@ app.post('/api/auth/register', async (req, res) => {
     // Vérifier si l'utilisateur existe déjà
     const existingUser = await pool.query(
       'SELECT id FROM users WHERE email = $1',
-      [email]
+      [email.toLowerCase()]
     );
 
     if (existingUser.rows.length > 0) {
       console.log('❌ Email déjà utilisé:', email);
       return res.status(400).json({ 
+        success: false,
         error: 'Un compte avec cet email existe déjà' 
       });
     }
 
     // Hasher le mot de passe
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 12);
 
     // Insérer le nouvel utilisateur
     const result = await pool.query(
-      `INSERT INTO users (email, password, name, phone, user_type) 
-       VALUES ($1, $2, $3, $4, $5) 
+      `INSERT INTO users (email, password, name, phone, user_type, rating, total_transactions, joined_date) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
        RETURNING id, email, name, phone, user_type, rating, total_transactions, joined_date`,
-      [email, hashedPassword, name, phone, userType]
+      [email.toLowerCase(), hashedPassword, name, phone || null, userType, 0, 0, new Date().toISOString().split('T')[0]]
     );
 
     const user = result.rows[0];
@@ -112,6 +171,8 @@ app.post('/api/auth/register', async (req, res) => {
       errorMessage = 'Base de données non disponible. Veuillez configurer PostgreSQL.';
     } else if (error.code === '23505') { // Violation de contrainte unique
       errorMessage = 'Un compte avec cet email existe déjà';
+    } else if (error.code === '42P01') { // Table n'existe pas
+      errorMessage = 'Base de données non initialisée. Veuillez créer les tables.';
     }
 
     res.status(500).json({ 
@@ -131,6 +192,7 @@ app.post('/api/auth/login', async (req, res) => {
     if (!email || !password) {
       console.log('❌ Données manquantes pour la connexion');
       return res.status(400).json({ 
+        success: false,
         error: 'Email et mot de passe requis' 
       });
     }
@@ -139,6 +201,7 @@ app.post('/api/auth/login', async (req, res) => {
     if (!pool) {
       console.log('❌ Base de données non disponible');
       return res.status(500).json({ 
+        success: false,
         error: 'Base de données non disponible. Veuillez configurer PostgreSQL.' 
       });
     }
@@ -146,12 +209,13 @@ app.post('/api/auth/login', async (req, res) => {
     // Chercher l'utilisateur
     const result = await pool.query(
       'SELECT * FROM users WHERE email = $1',
-      [email]
+      [email.toLowerCase()]
     );
 
     if (result.rows.length === 0) {
       console.log('❌ Utilisateur non trouvé:', email);
       return res.status(401).json({ 
+        success: false,
         error: 'Email ou mot de passe incorrect' 
       });
     }
@@ -163,6 +227,7 @@ app.post('/api/auth/login', async (req, res) => {
     if (!validPassword) {
       console.log('❌ Mot de passe incorrect pour:', email);
       return res.status(401).json({ 
+        success: false,
         error: 'Email ou mot de passe incorrect' 
       });
     }
@@ -200,6 +265,8 @@ app.post('/api/auth/login', async (req, res) => {
 
     if (error.code === 'ECONNREFUSED') {
       errorMessage = 'Base de données non disponible. Veuillez configurer PostgreSQL.';
+    } else if (error.code === '42P01') {
+      errorMessage = 'Base de données non initialisée. Veuillez créer les tables.';
     }
 
     res.status(500).json({ 
@@ -220,7 +287,16 @@ app.get('/api/users/:id', authenticateToken, async (req, res) => {
     }
 
     const user = result.rows[0];
-    res.json({ ...user, userType: user.user_type, totalTransactions: user.total_transactions, joinedDate: user.joined_date });
+    res.json({ 
+      id: user.id.toString(),
+      email: user.email,
+      name: user.name,
+      phone: user.phone,
+      userType: user.user_type, 
+      rating: parseFloat(user.rating) || 0,
+      totalTransactions: user.total_transactions || 0, 
+      joinedDate: user.joined_date 
+    });
   } catch (error) {
     console.error('Erreur lors de la récupération de l\'utilisateur:', error);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -242,7 +318,16 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
     }
 
     const user = result.rows[0];
-    res.json({ ...user, userType: user.user_type, totalTransactions: user.total_transactions, joinedDate: user.joined_date });
+    res.json({ 
+      id: user.id.toString(),
+      email: user.email,
+      name: user.name,
+      phone: user.phone,
+      userType: user.user_type, 
+      rating: parseFloat(user.rating) || 0,
+      totalTransactions: user.total_transactions || 0, 
+      joinedDate: user.joined_date 
+    });
   } catch (error) {
     console.error('Erreur lors de la mise à jour de l\'utilisateur:', error);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -253,7 +338,20 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
 app.get('/api/transactions', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM transactions ORDER BY created_date DESC');
-    res.json(result.rows);
+    res.json(result.rows.map(transaction => ({
+      ...transaction,
+      id: transaction.id.toString(),
+      buyerId: transaction.buyer_id?.toString(),
+      sellerId: transaction.seller_id?.toString(),
+      buyerName: transaction.buyer_name,
+      sellerName: transaction.seller_name,
+      createdDate: transaction.created_date,
+      expectedDelivery: transaction.expected_delivery,
+      inspectionPeriod: transaction.inspection_period,
+      deliveryAddress: transaction.delivery_address,
+      disputeReason: transaction.dispute_reason,
+      lastUpdate: transaction.last_update
+    })));
   } catch (error) {
     console.error('Erreur lors de la récupération des transactions:', error);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -267,7 +365,20 @@ app.get('/api/transactions/user/:userId', authenticateToken, async (req, res) =>
       'SELECT * FROM transactions WHERE buyer_id = $1 OR seller_id = $1 ORDER BY created_date DESC',
       [userId]
     );
-    res.json(result.rows);
+    res.json(result.rows.map(transaction => ({
+      ...transaction,
+      id: transaction.id.toString(),
+      buyerId: transaction.buyer_id?.toString(),
+      sellerId: transaction.seller_id?.toString(),
+      buyerName: transaction.buyer_name,
+      sellerName: transaction.seller_name,
+      createdDate: transaction.created_date,
+      expectedDelivery: transaction.expected_delivery,
+      inspectionPeriod: transaction.inspection_period,
+      deliveryAddress: transaction.delivery_address,
+      disputeReason: transaction.dispute_reason,
+      lastUpdate: transaction.last_update
+    })));
   } catch (error) {
     console.error('Erreur lors de la récupération des transactions utilisateur:', error);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -278,11 +389,40 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
   try {
     const transactionData = req.body;
     const result = await pool.query(
-      'INSERT INTO transactions (buyer_id, seller_id, amount, description, status, created_date, last_update) VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, CURRENT_DATE) RETURNING *',
-      [transactionData.buyerId, transactionData.sellerId, transactionData.amount, transactionData.description, transactionData.status || 'pending']
+      `INSERT INTO transactions (title, description, price, status, buyer_id, seller_id, buyer_name, seller_name, inspection_period, delivery_address, created_date, last_update) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) 
+       RETURNING *`,
+      [
+        transactionData.title,
+        transactionData.description,
+        transactionData.price,
+        transactionData.status || 'pending_acceptance',
+        transactionData.buyerId,
+        transactionData.sellerId,
+        transactionData.buyerName,
+        transactionData.sellerName,
+        transactionData.inspectionPeriod || 3,
+        transactionData.deliveryAddress,
+        new Date().toISOString().split('T')[0],
+        new Date().toISOString().split('T')[0]
+      ]
     );
 
-    res.status(201).json(result.rows[0]);
+    const transaction = result.rows[0];
+    res.status(201).json({
+      ...transaction,
+      id: transaction.id.toString(),
+      buyerId: transaction.buyer_id?.toString(),
+      sellerId: transaction.seller_id?.toString(),
+      buyerName: transaction.buyer_name,
+      sellerName: transaction.seller_name,
+      createdDate: transaction.created_date,
+      expectedDelivery: transaction.expected_delivery,
+      inspectionPeriod: transaction.inspection_period,
+      deliveryAddress: transaction.delivery_address,
+      disputeReason: transaction.dispute_reason,
+      lastUpdate: transaction.last_update
+    });
   } catch (error) {
     console.error('Erreur lors de la création de la transaction:', error);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -295,15 +435,29 @@ app.put('/api/transactions/:id/status', authenticateToken, async (req, res) => {
     const { status, disputeReason } = req.body;
 
     const result = await pool.query(
-      'UPDATE transactions SET status = $1, dispute_reason = $2, last_update = CURRENT_DATE WHERE id = $3 RETURNING *',
-      [status, disputeReason, id]
+      'UPDATE transactions SET status = $1, dispute_reason = $2, last_update = $3 WHERE id = $4 RETURNING *',
+      [status, disputeReason, new Date().toISOString().split('T')[0], id]
     );
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Transaction non trouvée' });
     }
 
-    res.json(result.rows[0]);
+    const transaction = result.rows[0];
+    res.json({
+      ...transaction,
+      id: transaction.id.toString(),
+      buyerId: transaction.buyer_id?.toString(),
+      sellerId: transaction.seller_id?.toString(),
+      buyerName: transaction.buyer_name,
+      sellerName: transaction.seller_name,
+      createdDate: transaction.created_date,
+      expectedDelivery: transaction.expected_delivery,
+      inspectionPeriod: transaction.inspection_period,
+      deliveryAddress: transaction.delivery_address,
+      disputeReason: transaction.dispute_reason,
+      lastUpdate: transaction.last_update
+    });
   } catch (error) {
     console.error('Erreur lors de la mise à jour du statut:', error);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -318,7 +472,15 @@ app.get('/api/transactions/:id/messages', authenticateToken, async (req, res) =>
       'SELECT * FROM messages WHERE transaction_id = $1 ORDER BY timestamp ASC',
       [id]
     );
-    res.json(result.rows);
+    res.json(result.rows.map(message => ({
+      id: message.id.toString(),
+      transactionId: message.transaction_id.toString(),
+      senderId: message.sender_id,
+      senderName: message.sender_name,
+      message: message.message,
+      timestamp: message.timestamp,
+      type: message.type
+    })));
   } catch (error) {
     console.error('Erreur lors de la récupération des messages:', error);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -327,13 +489,22 @@ app.get('/api/transactions/:id/messages', authenticateToken, async (req, res) =>
 
 app.post('/api/messages', authenticateToken, async (req, res) => {
   try {
-    const { transactionId, senderId, content, messageType } = req.body;
+    const { transactionId, senderId, senderName, message, type } = req.body;
     const result = await pool.query(
-      'INSERT INTO messages (transaction_id, sender_id, content, message_type, timestamp) VALUES ($1, $2, $3, $4, NOW()) RETURNING *',
-      [transactionId, senderId, content, messageType || 'text']
+      'INSERT INTO messages (transaction_id, sender_id, sender_name, message, type, timestamp) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [transactionId, senderId, senderName, message, type || 'text', new Date().toISOString()]
     );
 
-    res.status(201).json(result.rows[0]);
+    const newMessage = result.rows[0];
+    res.status(201).json({
+      id: newMessage.id.toString(),
+      transactionId: newMessage.transaction_id.toString(),
+      senderId: newMessage.sender_id,
+      senderName: newMessage.sender_name,
+      message: newMessage.message,
+      timestamp: newMessage.timestamp,
+      type: newMessage.type
+    });
   } catch (error) {
     console.error('Erreur lors de la création du message:', error);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -341,6 +512,11 @@ app.post('/api/messages', authenticateToken, async (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Serveur API démarré sur http://0.0.0.0:${PORT}`);
-  console.log('Mode: Base de données PostgreSQL connectée');
+  console.log(`🚀 Serveur API démarré sur http://0.0.0.0:${PORT}`);
+  console.log('📊 Mode: Base de données PostgreSQL');
+  console.log('🔗 Routes disponibles:');
+  console.log('  - GET  /api/health');
+  console.log('  - GET  /api/db-test');
+  console.log('  - POST /api/auth/register');
+  console.log('  - POST /api/auth/login');
 });

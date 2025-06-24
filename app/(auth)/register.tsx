@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Eye, EyeOff } from 'lucide-react-native';
+import { ArrowLeft, Eye, EyeOff, AlertCircle } from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function RegisterScreen() {
@@ -17,38 +17,65 @@ export default function RegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState<{[key: string]: string}>({});
   const router = useRouter();
   const { register } = useAuth();
 
   const updateFormData = <K extends keyof typeof formData>(key: K, value: typeof formData[K]) => {
     setFormData(prev => ({ ...prev, [key]: value }));
+    // Effacer l'erreur pour ce champ quand l'utilisateur commence à taper
+    if (errors[key]) {
+      setErrors(prev => ({ ...prev, [key]: '' }));
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors: {[key: string]: string} = {};
+    
+    if (!formData.name.trim()) {
+      newErrors.name = 'Le nom est requis';
+    }
+    
+    if (!formData.email.trim()) {
+      newErrors.email = 'L\'email est requis';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Format d\'email invalide';
+    }
+    
+    if (!formData.password) {
+      newErrors.password = 'Le mot de passe est requis';
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Le mot de passe doit contenir au moins 6 caractères';
+    }
+    
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = 'Veuillez confirmer le mot de passe';
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Les mots de passe ne correspondent pas';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleRegister = async () => {
-    const { name, email, password, confirmPassword, userType } = formData;
-
-    if (!name || !email || !password || !confirmPassword) {
-      Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      Alert.alert('Erreur', 'Les mots de passe ne correspondent pas');
-      return;
-    }
-
-    if (password.length < 6) {
-      Alert.alert('Erreur', 'Le mot de passe doit contenir au moins 6 caractères');
+    if (!validateForm()) {
       return;
     }
 
     setIsLoading(true);
+    setErrors({});
+    
     try {
+      const { name, email, password, userType, phone } = formData;
+
+      console.log('📝 Tentative d\'inscription:', { email, name, userType });
+
       const success = await register({
-        name,
-        email,
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
         password,
-        phone: formData.phone,
+        phone: phone.trim() || undefined,
         userType,
       });
 
@@ -64,14 +91,38 @@ export default function RegisterScreen() {
           ]
         );
       } else {
-        Alert.alert('Erreur', 'Impossible de créer le compte');
+        setErrors({ general: 'Impossible de créer le compte' });
       }
     } catch (error: any) {
-      const errorMessage = error.message || 'Une erreur est survenue lors de la création du compte';
-      Alert.alert('Erreur', errorMessage);
+      console.error('❌ Erreur lors de l\'inscription:', error);
+      
+      let errorMessage = error.message || 'Une erreur est survenue lors de la création du compte';
+      
+      // Gestion des erreurs spécifiques
+      if (errorMessage.includes('email existe déjà')) {
+        setErrors({ email: 'Un compte avec cet email existe déjà' });
+      } else if (errorMessage.includes('serveur')) {
+        setErrors({ general: 'Problème de connexion au serveur. Vérifiez que le serveur est démarré.' });
+      } else if (errorMessage.includes('base de données')) {
+        setErrors({ general: 'Problème de base de données. Vérifiez la configuration PostgreSQL.' });
+      } else {
+        setErrors({ general: errorMessage });
+      }
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const renderError = (field: string) => {
+    if (errors[field]) {
+      return (
+        <View style={styles.errorContainer}>
+          <AlertCircle color="#EF4444" size={16} />
+          <Text style={styles.errorText}>{errors[field]}</Text>
+        </View>
+      );
+    }
+    return null;
   };
 
   return (
@@ -88,28 +139,39 @@ export default function RegisterScreen() {
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.form}>
+          {errors.general && (
+            <View style={styles.generalErrorContainer}>
+              <AlertCircle color="#EF4444" size={20} />
+              <Text style={styles.generalErrorText}>{errors.general}</Text>
+            </View>
+          )}
+
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Nom complet *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, errors.name && styles.inputError]}
               value={formData.name}
               onChangeText={(value) => updateFormData('name', value)}
               placeholder="Votre nom complet"
               placeholderTextColor="#9CA3AF"
+              autoCapitalize="words"
             />
+            {renderError('name')}
           </View>
 
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Email *</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, errors.email && styles.inputError]}
               value={formData.email}
               onChangeText={(value) => updateFormData('email', value)}
               keyboardType="email-address"
               autoCapitalize="none"
+              autoCorrect={false}
               placeholder="votre@email.com"
               placeholderTextColor="#9CA3AF"
             />
+            {renderError('email')}
           </View>
 
           <View style={styles.inputContainer}>
@@ -155,7 +217,7 @@ export default function RegisterScreen() {
 
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Mot de passe *</Text>
-            <View style={styles.passwordContainer}>
+            <View style={[styles.passwordContainer, errors.password && styles.inputError]}>
               <TextInput
                 style={styles.passwordInput}
                 value={formData.password}
@@ -163,6 +225,8 @@ export default function RegisterScreen() {
                 secureTextEntry={!showPassword}
                 placeholder="••••••••"
                 placeholderTextColor="#9CA3AF"
+                autoCapitalize="none"
+                autoCorrect={false}
               />
               <TouchableOpacity
                 style={styles.eyeButton}
@@ -175,11 +239,12 @@ export default function RegisterScreen() {
                 )}
               </TouchableOpacity>
             </View>
+            {renderError('password')}
           </View>
 
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Confirmer le mot de passe *</Text>
-            <View style={styles.passwordContainer}>
+            <View style={[styles.passwordContainer, errors.confirmPassword && styles.inputError]}>
               <TextInput
                 style={styles.passwordInput}
                 value={formData.confirmPassword}
@@ -187,6 +252,8 @@ export default function RegisterScreen() {
                 secureTextEntry={!showConfirmPassword}
                 placeholder="••••••••"
                 placeholderTextColor="#9CA3AF"
+                autoCapitalize="none"
+                autoCorrect={false}
               />
               <TouchableOpacity
                 style={styles.eyeButton}
@@ -199,6 +266,7 @@ export default function RegisterScreen() {
                 )}
               </TouchableOpacity>
             </View>
+            {renderError('confirmPassword')}
           </View>
 
           <TouchableOpacity 
@@ -253,6 +321,21 @@ const styles = StyleSheet.create({
     paddingTop: 24,
     paddingBottom: 32,
   },
+  generalErrorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEE2E2',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 24,
+  },
+  generalErrorText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#DC2626',
+    marginLeft: 8,
+    flex: 1,
+  },
   inputContainer: {
     marginBottom: 24,
   },
@@ -272,6 +355,20 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#111827',
     backgroundColor: '#FFFFFF',
+  },
+  inputError: {
+    borderColor: '#EF4444',
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  errorText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#EF4444',
+    marginLeft: 6,
   },
   userTypeContainer: {
     flexDirection: 'row',
