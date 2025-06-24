@@ -84,6 +84,17 @@ class ApiService {
       return data.user;
     } catch (error: any) {
       console.error('Erreur lors de la connexion:', error);
+
+      // Gestion des erreurs de connexion
+      if (error.message.includes('Failed to fetch') || error.message.includes('Network')) {
+        throw new Error('Impossible de se connecter au serveur. Vérifiez votre connexion.');
+      }
+
+      // Gestion des erreurs de base de données
+      if (error.message.includes('Base de données non disponible')) {
+        throw new Error('Base de données non disponible. Veuillez configurer PostgreSQL dans Replit.');
+      }
+
       throw error;
     }
   }
@@ -100,6 +111,17 @@ class ApiService {
       return data.user;
     } catch (error: any) {
       console.error('Erreur lors de l\'inscription:', error);
+
+      // Gestion des erreurs de connexion
+      if (error.message.includes('Failed to fetch') || error.message.includes('Network')) {
+        throw new Error('Impossible de se connecter au serveur. Vérifiez votre connexion.');
+      }
+
+      // Gestion des erreurs de base de données
+      if (error.message.includes('Base de données non disponible')) {
+        throw new Error('Base de données non disponible. Veuillez configurer PostgreSQL dans Replit.');
+      }
+
       throw error;
     }
   }
