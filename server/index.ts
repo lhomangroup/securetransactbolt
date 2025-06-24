@@ -1,3 +1,4 @@
+
 import express from 'express';
 import cors from 'cors';
 import bcrypt from 'bcrypt';
@@ -95,14 +96,14 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/users/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const user = users.find(u => u.id === parseInt(id));
+    const result = await pool.query('SELECT id, email, name, phone, user_type, rating, total_transactions, joined_date FROM users WHERE id = $1', [id]);
 
-    if (!user) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Utilisateur non trouvé' });
     }
 
-    const { password: _, ...userResponse } = user;
-    res.json(userResponse);
+    const user = result.rows[0];
+    res.json({ ...user, userType: user.user_type, totalTransactions: user.total_transactions, joinedDate: user.joined_date });
   } catch (error) {
     console.error('Erreur lors de la récupération de l\'utilisateur:', error);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -112,18 +113,19 @@ app.get('/api/users/:id', authenticateToken, async (req, res) => {
 app.put('/api/users/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const updates = req.body;
+    const { name, phone, userType } = req.body;
 
-    const userIndex = users.findIndex(u => u.id === parseInt(id));
-    if (userIndex === -1) {
+    const result = await pool.query(
+      'UPDATE users SET name = $1, phone = $2, user_type = $3 WHERE id = $4 RETURNING id, email, name, phone, user_type, rating, total_transactions, joined_date',
+      [name, phone, userType, id]
+    );
+
+    if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Utilisateur non trouvé' });
     }
 
-    // Mettre à jour l'utilisateur
-    users[userIndex] = { ...users[userIndex], ...updates };
-    const { password: _, ...userResponse } = users[userIndex];
-
-    res.json(userResponse);
+    const user = result.rows[0];
+    res.json({ ...user, userType: user.user_type, totalTransactions: user.total_transactions, joinedDate: user.joined_date });
   } catch (error) {
     console.error('Erreur lors de la mise à jour de l\'utilisateur:', error);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -133,7 +135,8 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
 // Routes transactions
 app.get('/api/transactions', authenticateToken, async (req, res) => {
   try {
-    res.json(transactions);
+    const result = await pool.query('SELECT * FROM transactions ORDER BY created_date DESC');
+    res.json(result.rows);
   } catch (error) {
     console.error('Erreur lors de la récupération des transactions:', error);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -143,10 +146,11 @@ app.get('/api/transactions', authenticateToken, async (req, res) => {
 app.get('/api/transactions/user/:userId', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.params;
-    const userTransactions = transactions.filter(
-      t => t.buyerId === parseInt(userId) || t.sellerId === parseInt(userId)
+    const result = await pool.query(
+      'SELECT * FROM transactions WHERE buyer_id = $1 OR seller_id = $1 ORDER BY created_date DESC',
+      [userId]
     );
-    res.json(userTransactions);
+    res.json(result.rows);
   } catch (error) {
     console.error('Erreur lors de la récupération des transactions utilisateur:', error);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -156,15 +160,12 @@ app.get('/api/transactions/user/:userId', authenticateToken, async (req, res) =>
 app.post('/api/transactions', authenticateToken, async (req, res) => {
   try {
     const transactionData = req.body;
-    const transaction = {
-      id: transactions.length + 1,
-      ...transactionData,
-      createdDate: new Date().toISOString().split('T')[0],
-      lastUpdate: new Date().toISOString().split('T')[0]
-    };
+    const result = await pool.query(
+      'INSERT INTO transactions (buyer_id, seller_id, amount, description, status, created_date, last_update) VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, CURRENT_DATE) RETURNING *',
+      [transactionData.buyerId, transactionData.sellerId, transactionData.amount, transactionData.description, transactionData.status || 'pending']
+    );
 
-    transactions.push(transaction);
-    res.status(201).json(transaction);
+    res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Erreur lors de la création de la transaction:', error);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -176,19 +177,16 @@ app.put('/api/transactions/:id/status', authenticateToken, async (req, res) => {
     const { id } = req.params;
     const { status, disputeReason } = req.body;
 
-    const transactionIndex = transactions.findIndex(t => t.id === parseInt(id));
-    if (transactionIndex === -1) {
+    const result = await pool.query(
+      'UPDATE transactions SET status = $1, dispute_reason = $2, last_update = CURRENT_DATE WHERE id = $3 RETURNING *',
+      [status, disputeReason, id]
+    );
+
+    if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Transaction non trouvée' });
     }
 
-    transactions[transactionIndex] = {
-      ...transactions[transactionIndex],
-      status,
-      disputeReason,
-      lastUpdate: new Date().toISOString().split('T')[0]
-    };
-
-    res.json(transactions[transactionIndex]);
+    res.json(result.rows[0]);
   } catch (error) {
     console.error('Erreur lors de la mise à jour du statut:', error);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -199,8 +197,11 @@ app.put('/api/transactions/:id/status', authenticateToken, async (req, res) => {
 app.get('/api/transactions/:id/messages', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const transactionMessages = messages.filter(m => m.transactionId === parseInt(id));
-    res.json(transactionMessages);
+    const result = await pool.query(
+      'SELECT * FROM messages WHERE transaction_id = $1 ORDER BY timestamp ASC',
+      [id]
+    );
+    res.json(result.rows);
   } catch (error) {
     console.error('Erreur lors de la récupération des messages:', error);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -209,15 +210,13 @@ app.get('/api/transactions/:id/messages', authenticateToken, async (req, res) =>
 
 app.post('/api/messages', authenticateToken, async (req, res) => {
   try {
-    const messageData = req.body;
-    const message = {
-      id: messages.length + 1,
-      ...messageData,
-      timestamp: new Date().toISOString()
-    };
+    const { transactionId, senderId, content, messageType } = req.body;
+    const result = await pool.query(
+      'INSERT INTO messages (transaction_id, sender_id, content, message_type, timestamp) VALUES ($1, $2, $3, $4, NOW()) RETURNING *',
+      [transactionId, senderId, content, messageType || 'text']
+    );
 
-    messages.push(message);
-    res.status(201).json(message);
+    res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Erreur lors de la création du message:', error);
     res.status(500).json({ error: 'Erreur serveur' });
@@ -226,5 +225,5 @@ app.post('/api/messages', authenticateToken, async (req, res) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Serveur API démarré sur http://0.0.0.0:${PORT}`);
-  console.log('Mode: Base de données en mémoire (données temporaires)');
+  console.log('Mode: Base de données PostgreSQL connectée');
 });
