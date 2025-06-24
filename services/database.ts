@@ -1,18 +1,21 @@
 
 import { Pool } from 'pg';
 
-// Configuration manuelle de DATABASE_URL si elle n'est pas définie
-const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_QkdWrGU3NlZ9@ep-orange-darkness-a5074awi.us-east-2.aws.neon.tech/neondb?sslmode=require';
+// Utiliser la DATABASE_URL de l'environnement Replit
+const DATABASE_URL = process.env.DATABASE_URL;
+
+if (!DATABASE_URL) {
+  console.error('❌ DATABASE_URL non définie dans l\'environnement');
+  console.log('💡 Assurez-vous d\'avoir créé une base de données PostgreSQL dans Replit');
+  process.exit(1);
+}
 
 console.log('🔍 Configuration de la base de données:');
-console.log('DATABASE_URL définie:', !!process.env.DATABASE_URL);
-console.log('URL utilisée:', DATABASE_URL ? 'Configurée' : 'Non configurée');
+console.log('DATABASE_URL définie:', !!DATABASE_URL);
 
 const pool = new Pool({
   connectionString: DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  },
+  ssl: DATABASE_URL.includes('neon.tech') ? { rejectUnauthorized: false } : false,
 });
 
 // Test the connection
@@ -21,16 +24,16 @@ pool.on('connect', () => {
 });
 
 pool.on('error', (err) => {
-  console.error('❌ Erreur de connexion à la base de données:', err);
+  console.error('❌ Erreur de connexion à la base de données:', err.message);
   if (err.message.includes('ECONNREFUSED')) {
-    console.log('💡 Vérifiez que la base de données PostgreSQL est active');
+    console.log('💡 Vérifiez que la base de données PostgreSQL est active dans l\'onglet Database');
   }
 });
 
 // Test de connexion initial
 pool.connect((err, client, release) => {
   if (err) {
-    console.error('❌ Échec de la connexion initiale:', err);
+    console.error('❌ Échec de la connexion initiale:', err.message);
   } else {
     console.log('✅ Connexion initiale réussie à PostgreSQL');
     release();
