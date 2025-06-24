@@ -83,55 +83,81 @@ class ApiService {
   // Authentification
   static async login(email: string, password: string) {
     try {
-      console.log('Tentative de connexion avec:', email);
+      console.log('🔐 Tentative de connexion avec:', email);
       const data = await this.request('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       });
 
-      await AsyncStorage.setItem('authToken', data.token);
-      return data.user;
+      if (data.success && data.token) {
+        await AsyncStorage.setItem('authToken', data.token);
+        console.log('✅ Connexion réussie, token sauvegardé');
+        return data.user;
+      } else {
+        throw new Error(data.error || 'Erreur de connexion');
+      }
     } catch (error: any) {
-      console.error('Erreur lors de la connexion:', error);
+      console.error('❌ Erreur lors de la connexion:', error);
 
-      // Gestion des erreurs de connexion
-      if (error.message.includes('Failed to fetch') || error.message.includes('Network')) {
-        throw new Error('Impossible de se connecter au serveur. Vérifiez votre connexion.');
+      // Gestion des erreurs réseau
+      if (error.message.includes('Failed to fetch') || error.message.includes('fetch')) {
+        throw new Error('Impossible de se connecter au serveur. Vérifiez votre connexion internet.');
       }
 
       // Gestion des erreurs de base de données
-      if (error.message.includes('Base de données non disponible')) {
-        throw new Error('Base de données non disponible. Veuillez configurer PostgreSQL dans Replit.');
+      if (error.message.includes('Base de données non disponible') || error.message.includes('PostgreSQL')) {
+        throw new Error('Service temporairement indisponible. Veuillez réessayer dans quelques instants.');
       }
 
-      throw error;
+      // Gestion des erreurs d'authentification
+      if (error.message.includes('Email ou mot de passe incorrect')) {
+        throw new Error('Email ou mot de passe incorrect. Veuillez vérifier vos informations.');
+      }
+
+      // Erreur générique
+      throw new Error(error.message || 'Une erreur est survenue lors de la connexion');
     }
   }
 
   static async register(userData: any) {
     try {
-      console.log('Tentative d\'inscription avec:', userData.email);
+      console.log('📝 Tentative d\'inscription avec:', userData.email);
       const data = await this.request('/api/auth/register', {
         method: 'POST',
         body: JSON.stringify(userData),
       });
 
-      await AsyncStorage.setItem('authToken', data.token);
-      return data.user;
+      if (data.success && data.token) {
+        await AsyncStorage.setItem('authToken', data.token);
+        console.log('✅ Inscription réussie, token sauvegardé');
+        return data.user;
+      } else {
+        throw new Error(data.error || 'Erreur lors de la création du compte');
+      }
     } catch (error: any) {
-      console.error('Erreur lors de l\'inscription:', error);
+      console.error('❌ Erreur lors de l\'inscription:', error);
 
-      // Gestion des erreurs de connexion
-      if (error.message.includes('Failed to fetch') || error.message.includes('Network')) {
-        throw new Error('Impossible de se connecter au serveur. Vérifiez votre connexion.');
+      // Gestion des erreurs réseau
+      if (error.message.includes('Failed to fetch') || error.message.includes('fetch')) {
+        throw new Error('Impossible de se connecter au serveur. Vérifiez votre connexion internet.');
       }
 
       // Gestion des erreurs de base de données
-      if (error.message.includes('Base de données non disponible')) {
-        throw new Error('Base de données non disponible. Veuillez configurer PostgreSQL dans Replit.');
+      if (error.message.includes('Base de données non disponible') || error.message.includes('PostgreSQL')) {
+        throw new Error('Service temporairement indisponible. Veuillez réessayer dans quelques instants.');
       }
 
-      throw error;
+      // Gestion des erreurs de validation
+      if (error.message.includes('email existe déjà')) {
+        throw new Error('Un compte avec cet email existe déjà. Utilisez un autre email ou connectez-vous.');
+      }
+
+      if (error.message.includes('champs obligatoires')) {
+        throw new Error('Tous les champs obligatoires doivent être remplis.');
+      }
+
+      // Erreur générique
+      throw new Error(error.message || 'Une erreur est survenue lors de la création du compte');
     }
   }
 

@@ -1,4 +1,3 @@
-
 import express from 'express';
 import cors from 'cors';
 import bcrypt from 'bcrypt';
@@ -31,64 +30,182 @@ const authenticateToken = (req: any, res: any, next: any) => {
   });
 };
 
-// Routes d'authentification
+// Route d'inscription
 app.post('/api/auth/register', async (req, res) => {
   try {
+    console.log('📝 Tentative d\'inscription:', req.body.email);
+
     const { email, password, name, phone, userType } = req.body;
 
+    // Validation des données
+    if (!email || !password || !name || !userType) {
+      console.log('❌ Données manquantes pour l\'inscription');
+      return res.status(400).json({ 
+        error: 'Tous les champs obligatoires doivent être remplis' 
+      });
+    }
+
+    // Vérification de la base de données
+    if (!pool) {
+      console.log('❌ Base de données non disponible');
+      return res.status(500).json({ 
+        error: 'Base de données non disponible. Veuillez configurer PostgreSQL.' 
+      });
+    }
+
     // Vérifier si l'utilisateur existe déjà
-    const existingUserResult = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
-    if (existingUserResult.rows.length > 0) {
-      return res.status(400).json({ error: 'Cet email est déjà utilisé' });
+    const existingUser = await pool.query(
+      'SELECT id FROM users WHERE email = $1',
+      [email]
+    );
+
+    if (existingUser.rows.length > 0) {
+      console.log('❌ Email déjà utilisé:', email);
+      return res.status(400).json({ 
+        error: 'Un compte avec cet email existe déjà' 
+      });
     }
 
     // Hasher le mot de passe
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Créer l'utilisateur
+    // Insérer le nouvel utilisateur
     const result = await pool.query(
-      'INSERT INTO users (email, password, name, phone, user_type) VALUES ($1, $2, $3, $4, $5) RETURNING id, email, name, phone, user_type, rating, total_transactions, joined_date',
+      `INSERT INTO users (email, password, name, phone, user_type) 
+       VALUES ($1, $2, $3, $4, $5) 
+       RETURNING id, email, name, phone, user_type, rating, total_transactions, joined_date`,
       [email, hashedPassword, name, phone, userType]
     );
 
     const user = result.rows[0];
+    const token = jwt.sign(
+      { userId: user.id, email: user.email },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
 
-    // Générer le token JWT
-    const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+    console.log('✅ Inscription réussie pour:', email);
 
-    res.status(201).json({ user: { ...user, userType: user.user_type, totalTransactions: user.total_transactions, joinedDate: user.joined_date }, token });
-  } catch (error: any) {
-    console.error('Erreur lors de l\'inscription:', error);
-    res.status(500).json({ error: 'Erreur lors de la création du compte' });
+    res.status(201).json({
+      success: true,
+      message: 'Compte créé avec succès',
+      token,
+      user: {
+        id: user.id.toString(),
+        email: user.email,
+        name: user.name,
+        phone: user.phone,
+        userType: user.user_type,
+        rating: parseFloat(user.rating) || 0,
+        totalTransactions: user.total_transactions || 0,
+        joinedDate: user.joined_date
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur lors de l\'inscription:', error);
+
+    // Messages d'erreur plus spécifiques
+    let errorMessage = 'Erreur serveur lors de la création du compte';
+
+    if (error.code === 'ECONNREFUSED') {
+      errorMessage = 'Base de données non disponible. Veuillez configurer PostgreSQL.';
+    } else if (error.code === '23505') { // Violation de contrainte unique
+      errorMessage = 'Un compte avec cet email existe déjà';
+    }
+
+    res.status(500).json({ 
+      success: false,
+      error: errorMessage 
+    });
   }
 });
 
+// Route de connexion
 app.post('/api/auth/login', async (req, res) => {
   try {
+    console.log('🔐 Tentative de connexion:', req.body.email);
+
     const { email, password } = req.body;
 
-    // Récupérer l'utilisateur
-    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-    
+    if (!email || !password) {
+      console.log('❌ Données manquantes pour la connexion');
+      return res.status(400).json({ 
+        error: 'Email et mot de passe requis' 
+      });
+    }
+
+    // Vérification de la base de données
+    if (!pool) {
+      console.log('❌ Base de données non disponible');
+      return res.status(500).json({ 
+        error: 'Base de données non disponible. Veuillez configurer PostgreSQL.' 
+      });
+    }
+
+    // Chercher l'utilisateur
+    const result = await pool.query(
+      'SELECT * FROM users WHERE email = $1',
+      [email]
+    );
+
     if (result.rows.length === 0) {
-      return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+      console.log('❌ Utilisateur non trouvé:', email);
+      return res.status(401).json({ 
+        error: 'Email ou mot de passe incorrect' 
+      });
     }
 
     const user = result.rows[0];
 
     // Vérifier le mot de passe
-    const passwordMatch = await bcrypt.compare(password, user.password);
-    if (!passwordMatch) {
-      return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+    const validPassword = await bcrypt.compare(password, user.password);
+    if (!validPassword) {
+      console.log('❌ Mot de passe incorrect pour:', email);
+      return res.status(401).json({ 
+        error: 'Email ou mot de passe incorrect' 
+      });
     }
 
     // Générer le token JWT
-    const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign(
+      { userId: user.id, email: user.email },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
 
-    res.json({ user: { ...user, userType: user.user_type, totalTransactions: user.total_transactions, joinedDate: user.joined_date }, token });
-  } catch (error: any) {
-    console.error('Erreur lors de la connexion:', error);
-    res.status(500).json({ error: 'Erreur lors de la connexion' });
+    console.log('✅ Connexion réussie pour:', email);
+
+    res.json({
+      success: true,
+      message: 'Connexion réussie',
+      token,
+      user: {
+        id: user.id.toString(),
+        email: user.email,
+        name: user.name,
+        phone: user.phone,
+        userType: user.user_type,
+        rating: parseFloat(user.rating) || 0,
+        totalTransactions: user.total_transactions || 0,
+        joinedDate: user.joined_date
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur lors de la connexion:', error);
+
+    // Messages d'erreur plus spécifiques
+    let errorMessage = 'Erreur serveur lors de la connexion';
+
+    if (error.code === 'ECONNREFUSED') {
+      errorMessage = 'Base de données non disponible. Veuillez configurer PostgreSQL.';
+    }
+
+    res.status(500).json({ 
+      success: false,
+      error: errorMessage 
+    });
   }
 });
 

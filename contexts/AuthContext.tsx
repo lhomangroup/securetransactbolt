@@ -68,24 +68,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       setLoading(true);
+      console.log('🔐 Début du processus de connexion...');
       
       const userData = await ApiService.login(email, password);
       
-      setUser(userData);
-      setIsAuthenticated(true);
-      await AsyncStorage.setItem('userId', userData.id);
-      return true;
-    } catch (error: any) {
-      console.error('Erreur lors de la connexion:', error);
-      
-      // Lancer l'erreur pour que le composant puisse l'afficher
-      if (error.message) {
-        throw new Error(error.message);
-      } else if (typeof error === 'string') {
-        throw new Error(error);
+      if (userData) {
+        setUser(userData);
+        setIsAuthenticated(true);
+        await AsyncStorage.setItem('userId', userData.id);
+        console.log('✅ Connexion réussie dans AuthContext');
+        return true;
       } else {
-        throw new Error('Erreur de connexion au serveur. Veuillez réessayer.');
+        throw new Error('Données utilisateur non reçues');
       }
+    } catch (error: any) {
+      console.error('❌ Erreur lors de la connexion dans AuthContext:', error);
+      
+      // Lancer l'erreur avec un message approprié
+      const errorMessage = error.message || 'Une erreur inattendue est survenue lors de la connexion';
+      throw new Error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -94,24 +95,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (userData: RegisterData): Promise<boolean> => {
     try {
       setLoading(true);
+      console.log('📝 Début du processus d\'inscription...');
       
       const newUser = await ApiService.register(userData);
       
-      setUser(newUser);
-      setIsAuthenticated(true);
-      await AsyncStorage.setItem('userId', newUser.id);
-      return true;
-    } catch (error: any) {
-      console.error('Erreur lors de l\'inscription:', error);
-      
-      // Lancer l'erreur pour que le composant puisse l'afficher
-      if (error.message) {
-        throw new Error(error.message);
-      } else if (typeof error === 'string') {
-        throw new Error(error);
+      if (newUser) {
+        setUser(newUser);
+        setIsAuthenticated(true);
+        await AsyncStorage.setItem('userId', newUser.id);
+        console.log('✅ Inscription réussie dans AuthContext');
+        return true;
       } else {
-        throw new Error('Erreur de connexion au serveur. Veuillez réessayer.');
+        throw new Error('Données utilisateur non reçues');
       }
+    } catch (error: any) {
+      console.error('❌ Erreur lors de l\'inscription dans AuthContext:', error);
+      
+      // Lancer l'erreur avec un message approprié
+      const errorMessage = error.message || 'Une erreur inattendue est survenue lors de la création du compte';
+      throw new Error(errorMessage);
     } finally {
       setLoading(false);
     }
