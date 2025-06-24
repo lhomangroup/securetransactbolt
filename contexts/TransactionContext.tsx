@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import ApiService from '@/services/apiService';
 
@@ -62,20 +61,22 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const loadTransactions = async () => {
+      try {
+        setLoading(true);
+        const data = await ApiService.getAllTransactions();
+        setTransactions(data);
+      } catch (error) {
+        console.error('Erreur lors du chargement des transactions:', error);
+        // En cas d'erreur, on garde les données de démonstration
+        setTransactions([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     loadTransactions();
   }, []);
-
-  const loadTransactions = async () => {
-    try {
-      setLoading(true);
-      const allTransactions = await ApiService.getAllTransactions();
-      setTransactions(allTransactions);
-    } catch (error) {
-      console.error('Erreur lors du chargement des transactions:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const createTransaction = async (transactionData: Omit<Transaction, 'id' | 'createdDate' | 'lastUpdate'>): Promise<string> => {
     try {

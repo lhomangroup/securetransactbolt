@@ -290,5 +290,5 @@ app.post('/api/messages', authenticateToken, async (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Serveur API démarré sur le port ${PORT}`);
+  console.log(`Serveur API démarré sur http://0.0.0.0:${PORT}`);
 });

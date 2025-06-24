@@ -1,7 +1,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://0.0.0.0:5000/api';
 
 class ApiService {
   private static async getAuthHeader() {
@@ -12,21 +12,34 @@ class ApiService {
   private static async request(endpoint: string, options: RequestInit = {}) {
     const authHeaders = await this.getAuthHeader();
     
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...authHeaders,
-        ...options.headers,
-      },
-      ...options,
-    });
+    try {
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders,
+          ...options.headers,
+        },
+        ...options,
+      });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Erreur API');
+      if (!response.ok) {
+        let errorMessage = 'Erreur API';
+        try {
+          const error = await response.json();
+          errorMessage = error.error || errorMessage;
+        } catch (e) {
+          errorMessage = `Erreur HTTP ${response.status}`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      return response.json();
+    } catch (error) {
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Impossible de se connecter au serveur. Vérifiez que le serveur est démarré.');
+      }
+      throw error;
     }
-
-    return response.json();
   }
 
   // Authentification
