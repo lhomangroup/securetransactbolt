@@ -11,6 +11,8 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@babel/code-frame": "^7.27.1",
+    "@babel/preset-env": "^7.27.2",
     "@expo-google-fonts/inter": "^0.2.3",
     "@expo/vector-icons": "^14.1.0",
     "@lucide/lab": "^0.1.2",
@@ -58,7 +60,7 @@
     "tsx": "^4.20.3"
   },
   "devDependencies": {
-    "@babel/core": "^7.25.2",
+    "@babel/core": "^7.27.4",
     "@types/react": "~19.0.10",
     "typescript": "~5.8.3"
   }
