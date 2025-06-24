@@ -21,7 +21,7 @@ localPort = 8082
 externalPort = 3000
 
 [workflows]
-runButton = "Restart App"
+runButton = "Start Full App"
 
 [[workflows.workflow]]
 name = "Start App"
@@ -107,3 +107,16 @@ args = "sleep 5"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npx expo start --clear"
+
+[[workflows.workflow]]
+name = "Start Full App"
+author = 43407251
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run server"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
