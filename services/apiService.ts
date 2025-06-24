@@ -75,23 +75,15 @@ class ApiService {
   static async login(email: string, password: string) {
     try {
       console.log('Tentative de connexion avec:', email);
-      const response = await this.request('/api/auth/login', {
+      const data = await this.request('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
       await AsyncStorage.setItem('authToken', data.token);
       return data.user;
     } catch (error: any) {
       console.error('Erreur lors de la connexion:', error);
-
-      // Si c'est une erreur réseau
-      if (error.name === 'TypeError' && error.message.includes('fetch')) {
-        throw new Error('Impossible de se connecter au serveur. Vérifiez votre connexion internet.');
-      }
-
-      // Sinon, propager l'erreur telle quelle
       throw error;
     }
   }
@@ -99,23 +91,15 @@ class ApiService {
   static async register(userData: any) {
     try {
       console.log('Tentative d\'inscription avec:', userData.email);
-      const response = await this.request('/api/auth/register', {
+      const data = await this.request('/api/auth/register', {
         method: 'POST',
         body: JSON.stringify(userData),
       });
 
-      const data = await response.json();
       await AsyncStorage.setItem('authToken', data.token);
       return data.user;
     } catch (error: any) {
       console.error('Erreur lors de l\'inscription:', error);
-
-      // Si c'est une erreur réseau
-      if (error.name === 'TypeError' && error.message.includes('fetch')) {
-        throw new Error('Impossible de se connecter au serveur. Vérifiez votre connexion internet.');
-      }
-
-      // Sinon, propager l'erreur telle quelle
       throw error;
     }
   }
