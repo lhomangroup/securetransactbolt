@@ -3,6 +3,7 @@ import cors from 'cors';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
+import pool from '../services/database';
 
 dotenv.config();
 
@@ -12,11 +13,6 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 app.use(cors());
 app.use(express.json());
-
-// Base de données en mémoire pour le développement
-let users: any[] = [];
-let transactions: any[] = [];
-let messages: any[] = [];
 
 // Middleware d'authentification
 const authenticateToken = (req: any, res: any, next: any) => {
@@ -40,8 +36,8 @@ app.post('/api/auth/register', async (req, res) => {
     const { email, password, name, phone, userType } = req.body;
 
     // Vérifier si l'utilisateur existe déjà
-    const existingUser = users.find(u => u.email === email);
-    if (existingUser) {
+    const existingUserResult = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+    if (existingUserResult.rows.length > 0) {
       return res.status(400).json({ error: 'Cet email est déjà utilisé' });
     }
 
@@ -49,27 +45,17 @@ app.post('/api/auth/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Créer l'utilisateur
-    const user = {
-      id: users.length + 1,
-      email,
-      password: hashedPassword,
-      name,
-      phone,
-      userType,
-      rating: 0,
-      totalTransactions: 0,
-      joinedDate: new Date().toISOString().split('T')[0]
-    };
+    const result = await pool.query(
+      'INSERT INTO users (email, password, name, phone, user_type) VALUES ($1, $2, $3, $4, $5) RETURNING id, email, name, phone, user_type, rating, total_transactions, joined_date',
+      [email, hashedPassword, name, phone, userType]
+    );
 
-    users.push(user);
-
-    // Supprimer le mot de passe de la réponse
-    const { password: _, ...userResponse } = user;
+    const user = result.rows[0];
 
     // Générer le token JWT
     const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
 
-    res.status(201).json({ user: userResponse, token });
+    res.status(201).json({ user: { ...user, userType: user.user_type, totalTransactions: user.total_transactions, joinedDate: user.joined_date }, token });
   } catch (error: any) {
     console.error('Erreur lors de l\'inscription:', error);
     res.status(500).json({ error: 'Erreur lors de la création du compte' });
@@ -81,11 +67,13 @@ app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
 
     // Récupérer l'utilisateur
-    const user = users.find(u => u.email === email);
-
-    if (!user) {
+    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    
+    if (result.rows.length === 0) {
       return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
     }
+
+    const user = result.rows[0];
 
     // Vérifier le mot de passe
     const passwordMatch = await bcrypt.compare(password, user.password);
@@ -93,13 +81,10 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
     }
 
-    // Supprimer le mot de passe de la réponse
-    const { password: _, ...userResponse } = user;
-
     // Générer le token JWT
     const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
 
-    res.json({ user: userResponse, token });
+    res.json({ user: { ...user, userType: user.user_type, totalTransactions: user.total_transactions, joinedDate: user.joined_date }, token });
   } catch (error: any) {
     console.error('Erreur lors de la connexion:', error);
     res.status(500).json({ error: 'Erreur lors de la connexion' });
