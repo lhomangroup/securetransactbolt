@@ -91,8 +91,15 @@ class ApiService {
       const data = await response.json();
       await AsyncStorage.setItem('authToken', data.token);
       return data.user;
-    } catch (error) {
-      console.error('Erreur détaillée connexion:', error);
+    } catch (error: any) {
+      console.error('Erreur lors de la connexion:', error);
+
+      // Si c'est une erreur réseau
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        throw new Error('Impossible de se connecter au serveur. Vérifiez votre connexion internet.');
+      }
+
+      // Sinon, propager l'erreur telle quelle
       throw error;
     }
   }
@@ -116,8 +123,15 @@ class ApiService {
       const data = await response.json();
       await AsyncStorage.setItem('authToken', data.token);
       return data.user;
-    } catch (error) {
-      console.error('Erreur détaillée inscription:', error);
+    } catch (error: any) {
+      console.error('Erreur lors de l\'inscription:', error);
+
+      // Si c'est une erreur réseau
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        throw new Error('Impossible de se connecter au serveur. Vérifiez votre connexion internet.');
+      }
+
+      // Sinon, propager l'erreur telle quelle
       throw error;
     }
   }
