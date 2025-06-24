@@ -1,3 +1,4 @@
+
 import express from 'express';
 import cors from 'cors';
 import bcrypt from 'bcrypt';
@@ -50,7 +51,7 @@ app.post('/api/auth/register', async (req, res) => {
       VALUES ($1, $2, $3, $4, $5, 0, 0, CURRENT_DATE)
       RETURNING id, email, name, phone, user_type as userType, rating, total_transactions as totalTransactions, joined_date as joinedDate
     `;
-
+    
     const values = [email, hashedPassword, name, phone, userType];
     const result = await pool.query(query, values);
     const user = result.rows[0];
@@ -61,16 +62,13 @@ app.post('/api/auth/register', async (req, res) => {
     res.status(201).json({ user, token });
   } catch (error: any) {
     console.error('Erreur lors de l\'inscription:', error);
-
+    
     if (error.code === 'ECONNREFUSED') {
-      res.status(500).json({ error: 'Base de données non disponible. Veuillez configurer PostgreSQL dans les paramètres Replit.' });
+      res.status(500).json({ error: 'Base de données non disponible. Veuillez configurer PostgreSQL.' });
     } else if (error.code === '23505') {
       res.status(400).json({ error: 'Cet email est déjà utilisé' });
     } else {
-      res.status(500).json({ 
-        error: 'Erreur lors de la création du compte', 
-        details: error.message || 'Erreur inconnue'
-      });
+      res.status(500).json({ error: 'Erreur lors de la création du compte' });
     }
   }
 });
@@ -85,7 +83,7 @@ app.post('/api/auth/login', async (req, res) => {
       FROM users WHERE email = $1
     `;
     const result = await pool.query(query, [email]);
-
+    
     if (result.rows.length === 0) {
       return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
     }
@@ -107,14 +105,11 @@ app.post('/api/auth/login', async (req, res) => {
     res.json({ user, token });
   } catch (error: any) {
     console.error('Erreur lors de la connexion:', error);
-
+    
     if (error.code === 'ECONNREFUSED') {
-      res.status(500).json({ error: 'Base de données non disponible. Veuillez configurer PostgreSQL dans les paramètres Replit.' });
+      res.status(500).json({ error: 'Base de données non disponible. Veuillez configurer PostgreSQL.' });
     } else {
-      res.status(500).json({ 
-        error: 'Erreur lors de la connexion', 
-        details: error.message || 'Erreur inconnue'
-      });
+      res.status(500).json({ error: 'Erreur lors de la connexion' });
     }
   }
 });
@@ -128,7 +123,7 @@ app.get('/api/users/:id', authenticateToken, async (req, res) => {
       FROM users WHERE id = $1
     `;
     const result = await pool.query(query, [id]);
-
+    
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Utilisateur non trouvé' });
     }
@@ -144,17 +139,17 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
-
+    
     const fields = Object.keys(updates).filter(key => key !== 'id');
     const values = fields.map(field => updates[field]);
     const setClause = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
-
+    
     const query = `
       UPDATE users SET ${setClause}
       WHERE id = $1
       RETURNING id, email, name, phone, user_type as userType, rating, total_transactions as totalTransactions, joined_date as joinedDate
     `;
-
+    
     const result = await pool.query(query, [id, ...values]);
     res.json(result.rows[0]);
   } catch (error) {
@@ -214,7 +209,7 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
                 expected_delivery as expectedDelivery, inspection_period as inspectionPeriod, 
                 delivery_address as deliveryAddress, dispute_reason as disputeReason, last_update as lastUpdate
     `;
-
+    
     const values = [
       transactionData.title,
       transactionData.description,
@@ -229,7 +224,7 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
       transactionData.deliveryAddress,
       transactionData.disputeReason
     ];
-
+    
     const result = await pool.query(query, values);
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -242,7 +237,7 @@ app.put('/api/transactions/:id/status', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const { status, disputeReason } = req.body;
-
+    
     const query = `
       UPDATE transactions 
       SET status = $2, dispute_reason = $3, last_update = CURRENT_DATE
@@ -252,7 +247,7 @@ app.put('/api/transactions/:id/status', authenticateToken, async (req, res) => {
                 expected_delivery as expectedDelivery, inspection_period as inspectionPeriod, 
                 delivery_address as deliveryAddress, dispute_reason as disputeReason, last_update as lastUpdate
     `;
-
+    
     const result = await pool.query(query, [id, status, disputeReason]);
     res.json(result.rows[0]);
   } catch (error) {
@@ -289,7 +284,7 @@ app.post('/api/messages', authenticateToken, async (req, res) => {
       RETURNING id, transaction_id as transactionId, sender_id as senderId, sender_name as senderName, 
                 message, timestamp, type
     `;
-
+    
     const values = [
       messageData.transactionId,
       messageData.senderId,
@@ -297,7 +292,7 @@ app.post('/api/messages', authenticateToken, async (req, res) => {
       messageData.message,
       messageData.type
     ];
-
+    
     const result = await pool.query(query, values);
     res.status(201).json(result.rows[0]);
   } catch (error) {
