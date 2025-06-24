@@ -52,20 +52,29 @@ class ApiService {
       });
 
       if (!response.ok) {
-        let errorMessage = 'Erreur API';
+        let errorMessage = 'Erreur serveur';
+
         try {
-          const error = await response.json();
-          errorMessage = error.error || errorMessage;
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
         } catch (e) {
-          errorMessage = `Erreur HTTP ${response.status}`;
+          // Si on ne peut pas parser la réponse JSON, utiliser le message par défaut
+          if (response.status === 401) {
+            errorMessage = 'Email ou mot de passe incorrect';
+          } else if (response.status === 400) {
+            errorMessage = 'Données invalides';
+          } else if (response.status >= 500) {
+            errorMessage = 'Erreur du serveur. Veuillez réessayer.';
+          }
         }
+
         throw new Error(errorMessage);
       }
 
-      return response.json();
-    } catch (error) {
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        throw new Error('Impossible de se connecter au serveur. Vérifiez que le serveur est démarré.');
+      return await response.json();
+    } catch (error: any) {
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        throw new Error('Impossible de se connecter au serveur. Vérifiez votre connexion.');
       }
       throw error;
     }
