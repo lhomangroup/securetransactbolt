@@ -20,7 +20,7 @@ localPort = 8082
 externalPort = 3000
 
 [workflows]
-runButton = "Dev App"
+runButton = "Start Stable"
 
 [[workflows.workflow]]
 name = "Start App"
@@ -60,3 +60,20 @@ args = "sleep 3"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm run dev"
+
+[[workflows.workflow]]
+name = "Start Stable"
+author = 43407251
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run server &"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "sleep 5"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npx expo start --clear"

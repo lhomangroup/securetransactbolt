@@ -5,7 +5,16 @@ import { ArrowLeft, Camera, X } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTransactions } from '@/contexts/TransactionContext';
-// // // import * as ImagePicker from 'expo-image-picker';
+// // // let ImagePicker: any;
+try {
+  ImagePicker = require('expo-image-picker');
+} catch (e) {
+  console.warn('expo-image-picker not available');
+  ImagePicker = {
+    launchImageLibraryAsync: () => Promise.resolve({ canceled: true }),
+    MediaTypeOptions: { Images: 'Images' }
+  };
+}
 
 export default function CreateTransactionScreen() {
   const router = useRouter();
