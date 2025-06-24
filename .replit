@@ -20,7 +20,7 @@ localPort = 8082
 externalPort = 3000
 
 [workflows]
-runButton = "Full Stack App"
+runButton = "Dev App"
 
 [[workflows.workflow]]
 name = "Start App"
@@ -33,6 +33,19 @@ args = "npm run dev"
 
 [[workflows.workflow]]
 name = "Full Stack App"
+author = 43407251
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run server"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
+
+[[workflows.workflow]]
+name = "Dev App"
 author = 43407251
 mode = "parallel"
 

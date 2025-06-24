@@ -3,6 +3,34 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://0.0.0.0:5000/api';
 
+// Configuration pour les requêtes
+const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
+  const url = `${API_BASE_URL}${endpoint}`;
+  
+  const defaultHeaders = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers: defaultHeaders,
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('API Request failed:', error);
+    throw error;
+  }
+};
+
+export { apiRequest, API_BASE_URL };
+
 class ApiService {
   private static async getAuthHeader() {
     const token = await AsyncStorage.getItem('authToken');
