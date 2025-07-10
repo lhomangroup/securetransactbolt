@@ -10,16 +10,21 @@ export default function TabLayout() {
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
 
   useEffect(() => {
+    console.log('🔍 TabLayout useEffect - loading:', loading, 'isAuthenticated:', isAuthenticated, 'hasCheckedAuth:', hasCheckedAuth);
     if (!loading && !hasCheckedAuth) {
       setHasCheckedAuth(true);
       if (!isAuthenticated) {
+        console.log('❌ Utilisateur non authentifié dans TabLayout, redirection vers auth...');
         router.replace('/(auth)');
+      } else {
+        console.log('✅ Utilisateur authentifié dans TabLayout');
       }
     }
   }, [isAuthenticated, loading, router, hasCheckedAuth]);
 
   // Afficher un indicateur de chargement pendant la vérification de l'authentification
   if (loading || !hasCheckedAuth) {
+    console.log('⏳ TabLayout en cours de chargement...');
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F9FAFB' }}>
         <ActivityIndicator size="large" color="#2563EB" />
@@ -29,6 +34,7 @@ export default function TabLayout() {
 
   // Si pas authentifié, ne rien afficher (la redirection est en cours)
   if (!isAuthenticated) {
+    console.log('❌ Utilisateur non authentifié dans TabLayout, affichage du loader...');
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F9FAFB' }}>
         <ActivityIndicator size="large" color="#2563EB" />
@@ -36,6 +42,7 @@ export default function TabLayout() {
     );
   }
 
+  console.log('📱 Affichage des tabs pour utilisateur authentifié');
   return (
     <Tabs
       screenOptions={{

@@ -21,14 +21,23 @@ export default function LoginScreen() {
 
     setIsLoading(true);
     try {
+      console.log('🔐 Tentative de connexion depuis le composant Login');
       const success = await login(email, password);
+      console.log('📊 Résultat de la connexion:', success);
 
       if (success) {
-        router.replace('/(tabs)');
+        console.log('✅ Connexion réussie, tentative de redirection...');
+        // Petite pause pour s'assurer que l'état est mis à jour
+        setTimeout(() => {
+          console.log('🔄 Redirection vers les tabs...');
+          router.replace('/(tabs)');
+        }, 100);
       } else {
+        console.log('❌ Connexion échouée');
         Alert.alert('Erreur', 'Email ou mot de passe incorrect');
       }
     } catch (error: any) {
+      console.error('❌ Erreur dans handleLogin:', error);
       const errorMessage = error.message || 'Une erreur est survenue lors de la connexion';
       Alert.alert('Erreur', errorMessage);
     } finally {

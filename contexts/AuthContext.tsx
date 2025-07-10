@@ -89,10 +89,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userData = await ApiService.login(email, password);
       
       if (userData) {
+        console.log('✅ Données utilisateur reçues:', userData);
         setUser(userData);
         setIsAuthenticated(true);
         await AsyncStorage.setItem('userId', userData.id);
         console.log('✅ Connexion réussie dans AuthContext');
+        console.log('🔄 État mis à jour - isAuthenticated:', true);
         return true;
       } else {
         throw new Error('Données utilisateur non reçues');
