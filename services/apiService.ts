@@ -2,7 +2,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Configuration de l'URL de base
 const getApiBaseUrl = () => {
-  // Configuration standard pour développement local
+  // Utiliser la variable d'environnement si disponible, sinon localhost
+  if (process.env.EXPO_PUBLIC_API_BASE_URL) {
+    return process.env.EXPO_PUBLIC_API_BASE_URL;
+  }
+  
+  // Configuration pour développement local
   return 'http://localhost:5000';
 };
 
