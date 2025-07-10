@@ -9,10 +9,19 @@ export default function AuthLayout() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && isAuthenticated) {
-      router.replace('/(tabs)');
+    if (!loading) {
+      if (isAuthenticated) {
+        router.replace('/(tabs)');
+      }
     }
-  }, [isAuthenticated, loading, router]);
+  }, [isAuthenticated, loading]);
+
+  // Redirection immédiate si déjà authentifié
+  if (!loading && isAuthenticated) {
+    setTimeout(() => {
+      router.replace('/(tabs)');
+    }, 0);
+  }
 
   if (loading) {
     return (

@@ -24,16 +24,7 @@ export default function LoginScreen() {
       const success = await login(email, password);
 
       if (success) {
-        Alert.alert(
-          'Connexion réussie !', 
-          'Bienvenue de retour !',
-          [
-            {
-              text: 'Continuer',
-              onPress: () => router.replace('/(tabs)')
-            }
-          ]
-        );
+        router.replace('/(tabs)');
       } else {
         Alert.alert('Erreur', 'Email ou mot de passe incorrect');
       }

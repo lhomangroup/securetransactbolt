@@ -80,16 +80,7 @@ export default function RegisterScreen() {
       });
 
       if (success) {
-        Alert.alert(
-          'Compte créé !', 
-          'Votre compte a été créé avec succès. Bienvenue !',
-          [
-            {
-              text: 'Continuer',
-              onPress: () => router.replace('/(tabs)')
-            }
-          ]
-        );
+        router.replace('/(tabs)');
       } else {
         setErrors({ general: 'Impossible de créer le compte' });
       }
