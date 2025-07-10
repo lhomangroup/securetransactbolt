@@ -3,21 +3,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Configuration de l'URL de base selon l'environnement
 const getApiBaseUrl = () => {
   if (typeof window !== 'undefined') {
-    // Priorité à l'environnement Replit
-    if (typeof process !== 'undefined' && process.env.REPL_SLUG && process.env.REPL_OWNER) {
-      return `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co:5000`;
-    }
-    
     // Détection automatique de Replit via l'URL
     const hostname = window.location.hostname;
     if (hostname.includes('replit') || hostname.includes('repl.co')) {
-      // Extraire le slug et owner depuis l'URL actuelle
-      const parts = hostname.split('.');
-      if (parts.length >= 3) {
-        const slug = parts[0];
-        const owner = parts[1];
-        return `https://${slug}.${owner}.repl.co:5000`;
-      }
+      // Dans Replit, utiliser le même domaine avec le port 5000
+      const protocol = window.location.protocol;
+      return `${protocol}//${hostname.replace(':8081', ':5000')}`;
     }
     
     // En mode web/navigateur local

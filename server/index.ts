@@ -533,6 +533,10 @@ app.post('/api/messages', authenticateToken, async (req, res) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Serveur API démarré sur http://0.0.0.0:${PORT}`);
+  console.log(`🌐 Accessible via: http://localhost:${PORT}`);
+  if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
+    console.log(`🔗 Replit URL: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co:${PORT}`);
+  }
   console.log('📊 Mode: Base de données PostgreSQL');
   console.log('🔗 Routes disponibles:');
   console.log('  - GET  /api/health');
