@@ -3,26 +3,18 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Configuration de l'URL de base selon l'environnement
 const getApiBaseUrl = () => {
   if (typeof window !== 'undefined') {
-    // Détection automatique de Replit via l'URL
     const hostname = window.location.hostname;
+    
+    // Dans Replit, utiliser localhost:5000 en interne
     if (hostname.includes('replit') || hostname.includes('repl.co')) {
-      // Dans Replit, utiliser le même domaine avec le port 5000
-      const protocol = window.location.protocol;
-      return `${protocol}//${hostname.replace(':8081', ':5000')}`;
+      return 'http://localhost:5000';
     }
     
-    // En mode web/navigateur local
-    const protocol = window.location.protocol;
-    
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return `${protocol}//${hostname}:5000`;
-    }
-
-    // Pour les autres environnements, utiliser le même protocole
-    return `${protocol}//${hostname}:5000`;
+    // Pour localhost en développement local
+    return 'http://localhost:5000';
   }
   // En mode natif ou serveur
-  return 'http://0.0.0.0:5000';
+  return 'http://localhost:5000';
 };
 
 const API_BASE_URL = getApiBaseUrl();
