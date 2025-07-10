@@ -27,11 +27,8 @@ export default function LoginScreen() {
 
       if (success) {
         console.log('✅ Connexion réussie, tentative de redirection...');
-        // Petite pause pour s'assurer que l'état est mis à jour
-        setTimeout(() => {
-          console.log('🔄 Redirection vers les tabs...');
-          router.replace('/(tabs)');
-        }, 100);
+        console.log('🔄 Redirection vers les tabs...');
+        router.replace('/(tabs)');
       } else {
         console.log('❌ Connexion échouée');
         Alert.alert('Erreur', 'Email ou mot de passe incorrect');
