@@ -13,7 +13,7 @@ const getApiBaseUrl = () => {
   }
   
   // Configuration pour développement local
-  return 'http://localhost:5000';
+  return 'https://localhost:5000';
 };
 
 const API_BASE_URL = getApiBaseUrl();
