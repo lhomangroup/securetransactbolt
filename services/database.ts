@@ -1,125 +1,165 @@
-import { Pool } from 'pg';
+// Configuration de base de données en mémoire pour l'environnement de développement
+console.log('🔍 Configuration de la base de données en mémoire');
 
-// Configuration de base de données locale
-const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://localhost:5432/securetransact';
+// Stockage en mémoire pour remplacer PostgreSQL
+let users: any[] = [];
+let transactions: any[] = [];
+let messages: any[] = [];
+let nextUserId = 1;
+let nextTransactionId = 1;
+let nextMessageId = 1;
 
-console.log('🔍 Configuration de la base de données PostgreSQL');
-console.log('DATABASE_URL:', DATABASE_URL ? 'Configurée' : 'Non configurée');
-
-let pool: Pool | null = null;
-
-console.log('🔗 Tentative de connexion à PostgreSQL...');
-
-pool = new Pool({
-  connectionString: DATABASE_URL,
-  max: 10,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
-});
-
-pool.on('connect', () => {
-  console.log('✅ Connecté à la base de données PostgreSQL');
-});
-
-pool.on('error', (err) => {
-  console.error('❌ Erreur de connexion à la base de données:', err.message);
-  console.log('💡 Vérifiez que PostgreSQL est installé et démarré');
-});
-
-// Test de connexion initial et création des tables
-pool.connect()
-  .then(async (client) => {
-    console.log('✅ Connexion initiale réussie à PostgreSQL');
+// Simulation d'un pool de connexions
+const pool = {
+  query: async (sql: string, params: any[] = []) => {
+    console.log('📊 Executing query:', sql.substring(0, 100) + '...');
     
-    try {
-      // Vérifier si les tables existent
-      const tablesResult = await client.query(`
-        SELECT table_name 
-        FROM information_schema.tables 
-        WHERE table_schema = 'public' 
-        AND table_name IN ('users', 'transactions', 'messages')
-      `);
-      
-      const existingTables = tablesResult.rows.map(row => row.table_name);
-      console.log('📋 Tables existantes:', existingTables);
-      
-      if (existingTables.length === 0) {
-        console.log('🔧 Création des tables...');
-        
-        // Créer la table users
-        await client.query(`
-          CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            email VARCHAR(255) UNIQUE NOT NULL,
-            password VARCHAR(255) NOT NULL,
-            name VARCHAR(255) NOT NULL,
-            phone VARCHAR(20),
-            user_type VARCHAR(10) CHECK (user_type IN ('buyer', 'seller', 'both')) NOT NULL,
-            rating DECIMAL(2,1) DEFAULT 0,
-            total_transactions INTEGER DEFAULT 0,
-            joined_date DATE DEFAULT CURRENT_DATE,
-            avatar TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-          )
-        `);
-        
-        // Créer la table transactions
-        await client.query(`
-          CREATE TABLE IF NOT EXISTS transactions (
-            id SERIAL PRIMARY KEY,
-            title VARCHAR(500) NOT NULL,
-            description TEXT NOT NULL,
-            price DECIMAL(10,2) NOT NULL,
-            status VARCHAR(30) CHECK (status IN ('pending_acceptance', 'pending_payment', 'payment_secured', 'shipped', 'delivered', 'inspection_period', 'completed', 'disputed', 'cancelled')) NOT NULL,
-            buyer_id INTEGER REFERENCES users(id),
-            seller_id INTEGER REFERENCES users(id),
-            buyer_name VARCHAR(255) NOT NULL,
-            seller_name VARCHAR(255) NOT NULL,
-            created_date DATE DEFAULT CURRENT_DATE,
-            expected_delivery DATE,
-            inspection_period INTEGER DEFAULT 3,
-            delivery_address TEXT,
-            dispute_reason TEXT,
-            last_update DATE DEFAULT CURRENT_DATE,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-          )
-        `);
-        
-        // Créer la table messages
-        await client.query(`
-          CREATE TABLE IF NOT EXISTS messages (
-            id SERIAL PRIMARY KEY,
-            transaction_id INTEGER REFERENCES transactions(id) ON DELETE CASCADE,
-            sender_id VARCHAR(50) NOT NULL,
-            sender_name VARCHAR(255) NOT NULL,
-            message TEXT NOT NULL,
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            type VARCHAR(10) CHECK (type IN ('text', 'image', 'system')) DEFAULT 'text'
-          )
-        `);
-        
-        // Créer les index
-        await client.query('CREATE INDEX IF NOT EXISTS idx_transactions_buyer_id ON transactions(buyer_id)');
-        await client.query('CREATE INDEX IF NOT EXISTS idx_transactions_seller_id ON transactions(seller_id)');
-        await client.query('CREATE INDEX IF NOT EXISTS idx_messages_transaction_id ON messages(transaction_id)');
-        await client.query('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)');
-        
-        console.log('✅ Tables créées avec succès');
-      } else {
-        console.log('✅ Tables déjà existantes');
-      }
-      
-    } catch (error) {
-      console.error('❌ Erreur lors de la création des tables:', error);
+    // Simulation des requêtes SQL avec stockage en mémoire
+    if (sql.includes('SELECT table_name FROM information_schema.tables')) {
+      return { rows: [{ table_name: 'users' }, { table_name: 'transactions' }, { table_name: 'messages' }] };
     }
     
-    client.release();
-  })
-  .catch((err) => {
-    console.error('❌ Échec de la connexion initiale:', err.message);
-    console.log('💡 Vérifiez que PostgreSQL est installé et démarré localement');
-  });
+    if (sql.includes('CREATE TABLE') || sql.includes('CREATE INDEX')) {
+      return { rows: [] };
+    }
+    
+    if (sql.includes('SELECT NOW()')) {
+      return { rows: [{ current_time: new Date() }] };
+    }
+    
+    // Requêtes utilisateurs
+    if (sql.includes('SELECT id FROM users WHERE email')) {
+      const email = params[0];
+      const user = users.find(u => u.email === email);
+      return { rows: user ? [{ id: user.id }] : [] };
+    }
+    
+    if (sql.includes('INSERT INTO users')) {
+      const [email, password, name, phone, userType, rating, totalTransactions, joinedDate] = params;
+      const newUser = {
+        id: nextUserId++,
+        email,
+        password,
+        name,
+        phone,
+        user_type: userType,
+        rating,
+        total_transactions: totalTransactions,
+        joined_date: joinedDate
+      };
+      users.push(newUser);
+      return { rows: [newUser] };
+    }
+    
+    if (sql.includes('SELECT * FROM users WHERE email')) {
+      const email = params[0];
+      const user = users.find(u => u.email === email);
+      return { rows: user ? [user] : [] };
+    }
+    
+    if (sql.includes('SELECT id, email, name, phone, user_type, rating, total_transactions, joined_date FROM users WHERE id')) {
+      const id = parseInt(params[0]);
+      const user = users.find(u => u.id === id);
+      return { rows: user ? [user] : [] };
+    }
+    
+    if (sql.includes('UPDATE users SET')) {
+      const [name, phone, userType, id] = params;
+      const userIndex = users.findIndex(u => u.id === parseInt(id));
+      if (userIndex !== -1) {
+        users[userIndex] = { ...users[userIndex], name, phone, user_type: userType };
+        return { rows: [users[userIndex]] };
+      }
+      return { rows: [] };
+    }
+    
+    // Requêtes transactions
+    if (sql.includes('SELECT * FROM transactions ORDER BY created_date DESC')) {
+      return { rows: transactions };
+    }
+    
+    if (sql.includes('SELECT * FROM transactions WHERE buyer_id')) {
+      const userId = params[0];
+      const userTransactions = transactions.filter(t => t.buyer_id === parseInt(userId) || t.seller_id === parseInt(userId));
+      return { rows: userTransactions };
+    }
+    
+    if (sql.includes('INSERT INTO transactions')) {
+      const [title, description, price, status, buyerId, sellerId, buyerName, sellerName, inspectionPeriod, deliveryAddress, createdDate, lastUpdate] = params;
+      const newTransaction = {
+        id: nextTransactionId++,
+        title,
+        description,
+        price,
+        status,
+        buyer_id: buyerId,
+        seller_id: sellerId,
+        buyer_name: buyerName,
+        seller_name: sellerName,
+        inspection_period: inspectionPeriod,
+        delivery_address: deliveryAddress,
+        created_date: createdDate,
+        last_update: lastUpdate
+      };
+      transactions.push(newTransaction);
+      return { rows: [newTransaction] };
+    }
+    
+    if (sql.includes('UPDATE transactions SET status')) {
+      const [status, disputeReason, lastUpdate, id] = params;
+      const transactionIndex = transactions.findIndex(t => t.id === parseInt(id));
+      if (transactionIndex !== -1) {
+        transactions[transactionIndex] = { 
+          ...transactions[transactionIndex], 
+          status, 
+          dispute_reason: disputeReason, 
+          last_update: lastUpdate 
+        };
+        return { rows: [transactions[transactionIndex]] };
+      }
+      return { rows: [] };
+    }
+    
+    // Requêtes messages
+    if (sql.includes('SELECT * FROM messages WHERE transaction_id')) {
+      const transactionId = parseInt(params[0]);
+      const transactionMessages = messages.filter(m => m.transaction_id === transactionId);
+      return { rows: transactionMessages };
+    }
+    
+    if (sql.includes('INSERT INTO messages')) {
+      const [transactionId, senderId, senderName, message, type, timestamp] = params;
+      const newMessage = {
+        id: nextMessageId++,
+        transaction_id: parseInt(transactionId),
+        sender_id: senderId,
+        sender_name: senderName,
+        message,
+        type,
+        timestamp
+      };
+      messages.push(newMessage);
+      return { rows: [newMessage] };
+    }
+    
+    return { rows: [] };
+  },
+  
+  connect: async () => {
+    console.log('✅ Connecté à la base de données en mémoire');
+    return {
+      query: pool.query,
+      release: () => console.log('🔓 Connexion libérée')
+    };
+  },
+  
+  on: (event: string, callback: Function) => {
+    if (event === 'connect') {
+      setTimeout(() => callback(), 100);
+    }
+  }
+};
+
+console.log('✅ Base de données en mémoire initialisée');
 
 export default pool;
