@@ -13,7 +13,9 @@ export default function AuthLayout() {
     if (!loading) {
       if (isAuthenticated) {
         console.log('✅ Utilisateur authentifié détecté dans AuthLayout, redirection...');
-        router.replace('/(tabs)');
+        setTimeout(() => {
+          router.replace('/(tabs)');
+        }, 100);
       }
     }
   }, [isAuthenticated, loading]);
@@ -28,14 +30,6 @@ export default function AuthLayout() {
     );
   }
 
-  if (isAuthenticated) {
-    console.log('🔄 Utilisateur authentifié, affichage du loader pendant la redirection...');
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F9FAFB' }}>
-        <ActivityIndicator size="large" color="#2563EB" />
-      </View>
-    );
-  }
   console.log('📱 Affichage des écrans d\'authentification');
   return (
     <Stack screenOptions={{ headerShown: false }}>
