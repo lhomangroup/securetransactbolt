@@ -60,18 +60,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             } else {
               console.log('❌ Données utilisateur non trouvées');
               await AsyncStorage.multiRemove(['authToken', 'userId']);
+              setIsAuthenticated(false);
+              setUser(null);
             }
           } catch (error) {
             console.log('❌ Erreur lors de la récupération des données utilisateur:', error);
             await AsyncStorage.multiRemove(['authToken', 'userId']);
+            setIsAuthenticated(false);
+            setUser(null);
           }
         } else {
           console.log('ℹ️ Aucune session trouvée');
+          setIsAuthenticated(false);
+          setUser(null);
         }
       } catch (error) {
         console.error('Erreur lors de la vérification de l\'authentification:', error);
         // Si l'erreur est due à un token invalide, on nettoie le stockage
         await AsyncStorage.multiRemove(['authToken', 'userId']);
+        setIsAuthenticated(false);
+        setUser(null);
       } finally {
         console.log('🏁 Vérification d\'authentification terminée');
         setLoading(false);
@@ -94,13 +102,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsAuthenticated(true);
         await AsyncStorage.setItem('userId', userData.id);
         console.log('✅ Connexion réussie dans AuthContext');
-        console.log('🔄 État mis à jour - isAuthenticated:', true);
+        console.log('🔄 État mis à jour - isAuthenticated: true, user:', userData.name);
         return true;
       } else {
         throw new Error('Données utilisateur non reçues');
       }
     } catch (error: any) {
       console.error('❌ Erreur lors de la connexion dans AuthContext:', error);
+      setIsAuthenticated(false);
+      setUser(null);
       
       // Lancer l'erreur avec un message approprié
       const errorMessage = error.message || 'Une erreur inattendue est survenue lors de la connexion';

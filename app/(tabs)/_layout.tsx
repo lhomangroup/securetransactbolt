@@ -7,23 +7,24 @@ import { View, ActivityIndicator } from 'react-native';
 export default function TabLayout() {
   const { isAuthenticated, loading } = useAuth();
   const router = useRouter();
-  const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
+  const [hasRedirected, setHasRedirected] = useState(false);
 
   useEffect(() => {
-    console.log('🔍 TabLayout useEffect - loading:', loading, 'isAuthenticated:', isAuthenticated, 'hasCheckedAuth:', hasCheckedAuth);
-    if (!loading && !hasCheckedAuth) {
-      setHasCheckedAuth(true);
+    console.log('🔍 TabLayout useEffect - loading:', loading, 'isAuthenticated:', isAuthenticated, 'hasRedirected:', hasRedirected);
+    if (!loading && !hasRedirected) {
       if (!isAuthenticated) {
         console.log('❌ Utilisateur non authentifié dans TabLayout, redirection vers auth...');
+        setHasRedirected(true);
         router.replace('/(auth)');
       } else {
         console.log('✅ Utilisateur authentifié dans TabLayout');
+        setHasRedirected(true);
       }
     }
-  }, [isAuthenticated, loading, router, hasCheckedAuth]);
+  }, [isAuthenticated, loading, router, hasRedirected]);
 
   // Afficher un indicateur de chargement pendant la vérification de l'authentification
-  if (loading || !hasCheckedAuth) {
+  if (loading) {
     console.log('⏳ TabLayout en cours de chargement...');
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F9FAFB' }}>
@@ -33,7 +34,7 @@ export default function TabLayout() {
   }
 
   // Si pas authentifié, ne rien afficher (la redirection est en cours)
-  if (!isAuthenticated) {
+  if (!isAuthenticated && !hasRedirected) {
     console.log('❌ Utilisateur non authentifié dans TabLayout, affichage du loader...');
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F9FAFB' }}>

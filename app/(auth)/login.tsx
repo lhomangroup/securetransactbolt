@@ -27,8 +27,8 @@ export default function LoginScreen() {
 
       if (success) {
         console.log('✅ Connexion réussie, tentative de redirection...');
-        console.log('🔄 Redirection vers les tabs...');
-        router.replace('/(tabs)');
+        // La redirection sera gérée par AuthLayout
+        console.log('🔄 Connexion réussie, AuthLayout va gérer la redirection');
       } else {
         console.log('❌ Connexion échouée');
         Alert.alert('Erreur', 'Email ou mot de passe incorrect');

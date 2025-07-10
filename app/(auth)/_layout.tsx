@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import { Stack } from 'expo-router';
@@ -7,22 +7,31 @@ import { View, ActivityIndicator } from 'react-native';
 export default function AuthLayout() {
   const { isAuthenticated, loading } = useAuth();
   const router = useRouter();
+  const [hasRedirected, setHasRedirected] = useState(false);
 
   useEffect(() => {
-    console.log('🔍 AuthLayout useEffect - loading:', loading, 'isAuthenticated:', isAuthenticated);
-    if (!loading) {
+    console.log('🔍 AuthLayout useEffect - loading:', loading, 'isAuthenticated:', isAuthenticated, 'hasRedirected:', hasRedirected);
+    if (!loading && !hasRedirected) {
       if (isAuthenticated) {
         console.log('✅ Utilisateur authentifié détecté dans AuthLayout, redirection...');
-        setTimeout(() => {
-          router.replace('/(tabs)');
-        }, 100);
+        setHasRedirected(true);
+        router.replace('/(tabs)');
       }
     }
-  }, [isAuthenticated, loading]);
+  }, [isAuthenticated, loading, hasRedirected, router]);
 
 
   if (loading) {
     console.log('⏳ AuthLayout en cours de chargement...');
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F9FAFB' }}>
+        <ActivityIndicator size="large" color="#2563EB" />
+      </View>
+    );
+  }
+
+  if (isAuthenticated && !hasRedirected) {
+    console.log('🔄 Redirection en cours...');
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F9FAFB' }}>
         <ActivityIndicator size="large" color="#2563EB" />
