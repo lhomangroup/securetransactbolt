@@ -32,10 +32,22 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <TransactionProvider>
-        <Stack screenOptions={{ headerShown: false }}>
+        <Stack 
+          screenOptions={{ 
+            headerShown: false,
+            animation: 'none' // Désactiver les animations pour éviter les problèmes de navigation
+          }}
+        >
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="+not-found" />
+          <Stack.Screen name="chat/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="transaction/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="dispute/[id]" options={{ headerShown: false }} />
+          <Stack.Screen name="ratings" options={{ headerShown: false }} />
+          <Stack.Screen name="notifications" options={{ headerShown: false }} />
+          <Stack.Screen name="payment-methods" options={{ headerShown: false }} />
+          <Stack.Screen name="transaction-history" options={{ headerShown: false }} />
         </Stack>
         <StatusBar style="auto" />
       </TransactionProvider>

@@ -43,21 +43,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
+        console.log('🔍 Vérification du statut d\'authentification...');
         const token = await AsyncStorage.getItem('authToken');
         const storedUserId = await AsyncStorage.getItem('userId');
         
+        console.log('📱 Token trouvé:', !!token);
+        console.log('👤 User ID trouvé:', !!storedUserId);
+        
         if (token && storedUserId) {
-          const userData = await ApiService.getUserById(storedUserId);
-          if (userData) {
-            setUser(userData);
-            setIsAuthenticated(true);
+          try {
+            const userData = await ApiService.getUserById(storedUserId);
+            if (userData) {
+              setUser(userData);
+              setIsAuthenticated(true);
+              console.log('✅ Utilisateur authentifié:', userData.name);
+            } else {
+              console.log('❌ Données utilisateur non trouvées');
+              await AsyncStorage.multiRemove(['authToken', 'userId']);
+            }
+          } catch (error) {
+            console.log('❌ Erreur lors de la récupération des données utilisateur:', error);
+            await AsyncStorage.multiRemove(['authToken', 'userId']);
           }
+        } else {
+          console.log('ℹ️ Aucune session trouvée');
         }
       } catch (error) {
         console.error('Erreur lors de la vérification de l\'authentification:', error);
         // Si l'erreur est due à un token invalide, on nettoie le stockage
         await AsyncStorage.multiRemove(['authToken', 'userId']);
       } finally {
+        console.log('🏁 Vérification d\'authentification terminée');
         setLoading(false);
       }
     };
