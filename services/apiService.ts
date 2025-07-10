@@ -24,7 +24,7 @@ const getApiBaseUrl = () => {
     const protocol = window.location.protocol;
     
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return `http://${hostname}:5000`;
+      return `${protocol}//${hostname}:5000`;
     }
 
     // Pour les autres environnements, utiliser le même protocole
