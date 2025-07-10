@@ -13,7 +13,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 // Configuration CORS standard
 const getAllowedOrigins = () => {
-  return [
+  const origins = [
     'http://localhost:8081',
     'https://localhost:8081',
     'http://localhost:3000',
@@ -23,6 +23,13 @@ const getAllowedOrigins = () => {
     'http://localhost:8087',
     'https://localhost:8087'
   ];
+
+  // Add Replit dynamic origins if available
+  if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
+    origins.push(`https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.dev`);
+  }
+
+  return origins;
 };
 
 app.use(cors({

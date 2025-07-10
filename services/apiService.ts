@@ -7,6 +7,11 @@ const getApiBaseUrl = () => {
     return process.env.EXPO_PUBLIC_API_BASE_URL;
   }
   
+  // Configuration pour Replit si les variables d'environnement sont disponibles
+  if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
+    return `https://${process.env.REPL_SLUG}-5000.${process.env.REPL_OWNER}.replit.dev`;
+  }
+  
   // Configuration pour développement local
   return 'http://localhost:5000';
 };
