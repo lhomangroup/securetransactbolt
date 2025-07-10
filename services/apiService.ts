@@ -5,18 +5,17 @@ const getApiBaseUrl = () => {
   if (typeof window !== 'undefined') {
     // En mode web/navigateur
     const hostname = window.location.hostname;
-    const protocol = window.location.protocol;
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return `${protocol}//${hostname}:5000`;
+      return `http://${hostname}:5000`;
     }
     // Support pour Replit et autres environnements
     if (hostname.includes('replit') || hostname.includes('repl.co')) {
-      return `${protocol}//${hostname.replace(/:\d+$/, '')}:5000`;
+      return `http://${hostname.replace(/:\d+$/, '')}:5000`;
     }
-    return `${protocol}//${hostname}:5000`;
+    return `http://${hostname}:5000`;
   }
   // En mode natif ou serveur
-  return 'https://0.0.0.0:5000';
+  return 'http://0.0.0.0:5000';
 };
 
 const API_BASE_URL = getApiBaseUrl();
