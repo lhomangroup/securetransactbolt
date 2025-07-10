@@ -11,8 +11,28 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
+// Fonction pour obtenir les origines autorisées dynamiquement
+const getAllowedOrigins = () => {
+  const origins = [
+    'http://localhost:8081',
+    'https://localhost:8081',
+    'http://localhost:3000',
+    'https://localhost:3000',
+    'http://0.0.0.0:8081',
+    'https://0.0.0.0:8081'
+  ];
+
+  // Ajouter les domaines Replit si disponibles
+  if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
+    origins.push(`https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`);
+    origins.push(`https://${process.env.REPL_SLUG}--${process.env.REPL_OWNER}.repl.co`);
+  }
+
+  return origins;
+};
+
 app.use(cors({
-  origin: ['http://localhost:8081', 'http://localhost:3000', 'http://0.0.0.0:8081'],
+  origin: getAllowedOrigins(),
   credentials: true
 }));
 app.use(express.json());
