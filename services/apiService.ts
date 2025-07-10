@@ -1,19 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Configuration de l'URL de base selon l'environnement
+// Configuration de l'URL de base
 const getApiBaseUrl = () => {
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    
-    // Dans Replit, utiliser localhost:5000 en interne
-    if (hostname.includes('replit') || hostname.includes('repl.co')) {
-      return 'http://localhost:5000';
-    }
-    
-    // Pour localhost en développement local
-    return 'http://localhost:5000';
-  }
-  // En mode natif ou serveur
+  // Configuration standard pour développement local
   return 'http://localhost:5000';
 };
 

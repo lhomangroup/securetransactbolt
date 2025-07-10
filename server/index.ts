@@ -11,24 +11,18 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
-// Fonction pour obtenir les origines autorisées dynamiquement
+// Configuration CORS standard
 const getAllowedOrigins = () => {
-  const origins = [
+  return [
     'http://localhost:8081',
     'https://localhost:8081',
     'http://localhost:3000',
     'https://localhost:3000',
-    'http://0.0.0.0:8081',
-    'https://0.0.0.0:8081'
+    'http://127.0.0.1:8081',
+    'https://127.0.0.1:8081',
+    'http://localhost:8087',
+    'https://localhost:8087'
   ];
-
-  // Ajouter les domaines Replit si disponibles
-  if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
-    origins.push(`https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`);
-    origins.push(`https://${process.env.REPL_SLUG}--${process.env.REPL_OWNER}.repl.co`);
-  }
-
-  return origins;
 };
 
 app.use(cors({
@@ -534,10 +528,8 @@ app.post('/api/messages', authenticateToken, async (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Serveur API démarré sur http://0.0.0.0:${PORT}`);
   console.log(`🌐 Accessible via: http://localhost:${PORT}`);
-  if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
-    console.log(`🔗 Replit URL: https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co:${PORT}`);
-  }
-  console.log('📊 Mode: Base de données PostgreSQL');
+  console.log(`🔗 API accessible sur: http://127.0.0.1:${PORT}`);
+  console.log('📊 Base de données: PostgreSQL');
   console.log('🔗 Routes disponibles:');
   console.log('  - GET  /api/health');
   console.log('  - GET  /api/db-test');
