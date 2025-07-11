@@ -14,12 +14,17 @@ export default function LoginScreen() {
   const { login } = useAuth();
 
   const handleLogin = async () => {
+    console.log('🔍 handleLogin appelé avec:', { email, password: password ? '***' : 'vide' });
+    
     if (!email || !password) {
+      console.log('❌ Champs manquants');
       Alert.alert('Erreur', 'Veuillez remplir tous les champs');
       return;
     }
 
     setIsLoading(true);
+    console.log('⏳ Début de la connexion...');
+    
     try {
       console.log('🔐 Tentative de connexion depuis le composant Login');
       const success = await login(email, password);
@@ -31,13 +36,15 @@ export default function LoginScreen() {
         console.log('🔄 Connexion réussie, AuthLayout va gérer la redirection');
       } else {
         console.log('❌ Connexion échouée');
-        Alert.alert('Erreur', 'Email ou mot de passe incorrect');
+        Alert.alert('Erreur de connexion', 'Email ou mot de passe incorrect');
       }
     } catch (error: any) {
       console.error('❌ Erreur dans handleLogin:', error);
-      const errorMessage = error.message || 'Une erreur est survenue lors de la connexion';
-      Alert.alert('Erreur', errorMessage);
+      const errorMessage = error.message || 'Une erreur inattendue est survenue lors de la connexion';
+      console.log('🚨 Affichage de l\'erreur:', errorMessage);
+      Alert.alert('Erreur de connexion', errorMessage);
     } finally {
+      console.log('🏁 Fin de handleLogin, setIsLoading(false)');
       setIsLoading(false);
     }
   };
