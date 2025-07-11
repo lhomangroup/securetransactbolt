@@ -92,30 +92,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       setLoading(true);
-      console.log('🔐 Début du processus de connexion...');
+      console.log('🔐 AuthContext.login - Début du processus de connexion pour:', email);
       
       const userData = await ApiService.login(email, password);
+      console.log('📦 AuthContext.login - Données reçues:', userData ? 'OK' : 'NULL');
       
       if (userData) {
-        console.log('✅ Données utilisateur reçues:', userData);
+        console.log('✅ AuthContext.login - Données utilisateur reçues:', userData.name);
         setUser(userData);
         setIsAuthenticated(true);
         await AsyncStorage.setItem('userId', userData.id);
-        console.log('✅ Connexion réussie dans AuthContext');
-        console.log('🔄 État mis à jour - isAuthenticated: true, user:', userData.name);
+        console.log('✅ AuthContext.login - État mis à jour - isAuthenticated: true, user:', userData.name);
         return true;
       } else {
+        console.log('❌ AuthContext.login - Aucune donnée utilisateur reçue');
         throw new Error('Données utilisateur non reçues');
       }
     } catch (error: any) {
-      console.error('❌ Erreur lors de la connexion dans AuthContext:', error);
+      console.error('❌ AuthContext.login - Erreur:', error.message);
       setIsAuthenticated(false);
       setUser(null);
       
       // Lancer l'erreur avec un message approprié
       const errorMessage = error.message || 'Une erreur inattendue est survenue lors de la connexion';
+      console.log('🚨 AuthContext.login - Lancement de l\'erreur:', errorMessage);
       throw new Error(errorMessage);
     } finally {
+      console.log('🏁 AuthContext.login - setLoading(false)');
       setLoading(false);
     }
   };

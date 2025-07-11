@@ -145,28 +145,34 @@ class ApiService {
   // Authentification
   static async login(email: string, password: string) {
     try {
-      console.log('🔐 Tentative de connexion avec:', email);
+      console.log('🔐 ApiService.login - Tentative de connexion avec:', email);
+      console.log('🔗 ApiService.login - URL de base:', API_BASE_URL);
       
       // Test de connectivité avant la requête
+      console.log('🔍 ApiService.login - Test de connectivité...');
       const isConnected = await this.testConnection();
+      console.log('📡 ApiService.login - Connectivité:', isConnected);
       if (!isConnected) {
         throw new Error('Impossible de se connecter au serveur. Vérifiez que le serveur est démarré.');
       }
       
+      console.log('📤 ApiService.login - Envoi de la requête de connexion...');
       const data = await this.request('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       });
+      console.log('📥 ApiService.login - Réponse reçue:', data);
 
       if (data.success && data.token) {
         await AsyncStorage.setItem('authToken', data.token);
-        console.log('✅ Connexion réussie, token sauvegardé');
+        console.log('✅ ApiService.login - Token sauvegardé, retour des données utilisateur');
         return data.user;
       } else {
+        console.log('❌ ApiService.login - Réponse invalide:', data);
         throw new Error(data.error || 'Erreur de connexion');
       }
     } catch (error: any) {
-      console.error('❌ Erreur lors de la connexion:', error);
+      console.error('❌ ApiService.login - Erreur:', error.message);
 
       // Gestion des erreurs réseau
       if (error.message.includes('Failed to fetch') || error.message.includes('fetch') || error.message.includes('serveur')) {
