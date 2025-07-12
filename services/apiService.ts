@@ -5,8 +5,24 @@ const getApiBaseUrl = () => {
   // Dans Replit, construire l'URL backend avec le port 5000
   if (typeof window !== 'undefined' && window.location.hostname.includes('.replit.dev')) {
     const hostname = window.location.hostname;
-    // Pour Replit, utiliser directement l'URL avec le port 5000 ajouté
-    return `https://${hostname.replace('.replit.dev', '')}-5000.replit.dev`;
+    
+    // Extraire le nom du repl de l'hostname
+    // Format: workspace.lhomangroup.replit.dev ou workspace.lhomangroup-8081.replit.dev
+    let replName = hostname.split('.')[0];
+    let username = hostname.split('.')[1];
+    
+    // Si l'hostname contient un port, le retirer du nom du repl
+    if (replName.includes('-')) {
+      const parts = replName.split('-');
+      // Garder tout sauf le dernier élément s'il ressemble à un port
+      const lastPart = parts[parts.length - 1];
+      if (/^\d+$/.test(lastPart)) {
+        replName = parts.slice(0, -1).join('-');
+      }
+    }
+    
+    // Construire l'URL du backend
+    return `https://${replName}.${username}-5000.replit.dev`;
   }
 
   // Utiliser la variable d'environnement si disponible
@@ -71,8 +87,24 @@ class ApiService {
     // Dans Replit, construire l'URL backend avec le port 5000
     if (typeof window !== 'undefined' && window.location.hostname.includes('.replit.dev')) {
       const hostname = window.location.hostname;
-      // Pour Replit, utiliser directement l'URL avec le port 5000 ajouté
-      return `https://${hostname.replace('.replit.dev', '')}-5000.replit.dev`;
+      
+      // Extraire le nom du repl de l'hostname
+      // Format: workspace.lhomangroup.replit.dev ou workspace.lhomangroup-8081.replit.dev
+      let replName = hostname.split('.')[0];
+      let username = hostname.split('.')[1];
+      
+      // Si l'hostname contient un port, le retirer du nom du repl
+      if (replName.includes('-')) {
+        const parts = replName.split('-');
+        // Garder tout sauf le dernier élément s'il ressemble à un port
+        const lastPart = parts[parts.length - 1];
+        if (/^\d+$/.test(lastPart)) {
+          replName = parts.slice(0, -1).join('-');
+        }
+      }
+      
+      // Construire l'URL du backend
+      return `https://${replName}.${username}-5000.replit.dev`;
     }
 
     // Pour le développement local
