@@ -28,7 +28,7 @@ const getAllowedOrigins = () => {
   if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
     const replitUrl = `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.dev`;
     origins.push(replitUrl);
-    
+
     // Ajouter aussi les variantes avec le port 8081
     origins.push(replitUrl.replace('.replit.dev', '-8081.replit.dev'));
   }
@@ -540,6 +540,89 @@ app.post('/api/messages', authenticateToken, async (req, res) => {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
+
+const initializeDatabase = async () => {
+  try {
+    console.log('🔍 Configuration de la base de données en mémoire');
+
+    // Créer les tables
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        phone VARCHAR(20),
+        user_type VARCHAR(20) DEFAULT 'both',
+        rating DECIMAL(3,2) DEFAULT 0,
+        total_transactions INTEGER DEFAULT 0,
+        joined_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS transactions (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        amount DECIMAL(10,2) NOT NULL,
+        status VARCHAR(50) DEFAULT 'pending',
+        buyer_id INTEGER REFERENCES users(id),
+        seller_id INTEGER REFERENCES users(id),
+        buyer_name VARCHAR(255),
+        seller_name VARCHAR(255),
+        created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        expected_delivery DATE,
+        inspection_period INTEGER DEFAULT 3,
+        delivery_address TEXT,
+        dispute_reason TEXT,
+        last_update TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS messages (
+        id SERIAL PRIMARY KEY,
+        transaction_id INTEGER REFERENCES transactions(id),
+        sender_id INTEGER REFERENCES users(id),
+        content TEXT NOT NULL,
+        sent_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        sender_name VARCHAR(255),
+        is_system_message BOOLEAN DEFAULT FALSE
+      )
+    `);
+
+    // Créer l'utilisateur de test
+    try {
+      const testEmail = 'test@gmail.com';
+      const testPassword = 'Sydney220304!';
+      const hashedPassword = await bcrypt.hash(testPassword, 10);
+
+      // Vérifier si l'utilisateur existe déjà
+      const existingUser = await pool.query('SELECT id FROM users WHERE email = $1', [testEmail]);
+
+      if (existingUser.rows.length === 0) {
+        await pool.query(
+          'INSERT INTO users (email, password, name, phone, user_type) VALUES ($1, $2, $3, $4, $5)',
+          [testEmail, hashedPassword, 'Utilisateur Test', '+33123456789', 'both']
+        );
+        console.log('✅ Utilisateur de test créé:', testEmail);
+      } else {
+        console.log('ℹ️ Utilisateur de test déjà existant:', testEmail);
+      }
+    } catch (error) {
+      console.error('❌ Erreur lors de la création de l\'utilisateur de test:', error);
+    }
+
+    console.log('✅ Base de données en mémoire initialisée');
+  } catch (error) {
+    console.error('❌ Erreur lors de l\'initialisation de la base de données:', error);
+    throw error;
+  }
+};
+
+// Initialize the database
+initializeDatabase();
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Serveur API démarré sur http://0.0.0.0:${PORT}`);
