@@ -67,9 +67,10 @@ export { apiRequest, API_BASE_URL };
 
 class ApiService {
   private static getBaseURL() {
-    // Dans Replit, utiliser l'URL complète du repl
+    // Dans Replit, utiliser l'URL complète du repl en forçant le port 5000
     if (typeof window !== 'undefined' && window.location.hostname.includes('.replit.dev')) {
       const hostname = window.location.hostname;
+      // S'assurer que nous utilisons toujours le port 5000 pour le backend
       return `https://${hostname.replace('-8081', '-5000')}`;
     }
 
@@ -139,12 +140,17 @@ class ApiService {
     try {
       console.log('🔍 ApiService.testConnectivity - Test avec:', this.baseURL);
 
+      // Construire l'URL backend en remplaçant le port du frontend par celui du backend
+      const backendUrl = window.location.hostname.includes('.replit.dev') 
+        ? `https://${window.location.hostname.replace('-8081', '-5000')}`
+        : 'http://localhost:5000';
+
       // Essayer plusieurs URLs possibles
       const urls = [
-        this.baseURL,
+        backendUrl,
         'http://localhost:5000',
         `https://${window.location.hostname.replace('-8081', '-5000')}`,
-        `http://${window.location.hostname.replace('-8081', '-5000')}`
+        this.baseURL,
       ];
 
       for (const url of urls) {
