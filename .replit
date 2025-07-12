@@ -1,2 +1,12 @@
-modules = ["nodejs-20"]
-run = "./start.sh"
+modules = ["nodejs-20", "bash"]
+run = "npm run dev"
+
+[deployment]
+run = ["sh", "-c", "npm run dev"]
+
+[nix]
+channel = "stable-24_05"
+
+[[ports]]
+localPort = 8081
+externalPort = 80
