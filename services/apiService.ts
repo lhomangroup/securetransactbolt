@@ -5,10 +5,10 @@ const getApiBaseUrl = () => {
   // Dans Replit, construire l'URL backend avec le port 5000
   if (typeof window !== 'undefined' && window.location.hostname.includes('.replit.dev')) {
     const hostname = window.location.hostname;
-    // Extraire correctement le nom du repl en supprimant tout suffixe de port existant
-    const replName = hostname.split('.')[0].split('-')[0];
+    // Extraire correctement le nom du repl (tout avant le premier point)
+    const replId = hostname.split('.')[0];
     const userDomain = hostname.split('.').slice(1).join('.');
-    return `https://${replName}-5000.${userDomain}`;
+    return `https://${replId}-5000.${userDomain}`;
   }
 
   // Utiliser la variable d'environnement si disponible
@@ -73,10 +73,10 @@ class ApiService {
     // Dans Replit, construire l'URL backend avec le port 5000
     if (typeof window !== 'undefined' && window.location.hostname.includes('.replit.dev')) {
       const hostname = window.location.hostname;
-      // Extraire correctement le nom du repl en supprimant tout suffixe de port existant
-      const replName = hostname.split('.')[0].split('-')[0];
+      // Extraire correctement le nom du repl (tout avant le premier point)
+      const replId = hostname.split('.')[0];
       const userDomain = hostname.split('.').slice(1).join('.');
-      return `https://${replName}-5000.${userDomain}`;
+      return `https://${replId}-5000.${userDomain}`;
     }
 
     // Pour le développement local
@@ -149,10 +149,10 @@ class ApiService {
       let backendUrl = 'http://localhost:5000';
       if (window.location.hostname.includes('.replit.dev')) {
         const hostname = window.location.hostname;
-        // Extraire correctement le nom du repl en supprimant tout suffixe de port existant
-        const replName = hostname.split('.')[0].split('-')[0];
+        // Extraire correctement le nom du repl (tout avant le premier point)
+        const replId = hostname.split('.')[0];
         const userDomain = hostname.split('.').slice(1).join('.');
-        backendUrl = `https://${replName}-5000.${userDomain}`;
+        backendUrl = `https://${replId}-5000.${userDomain}`;
       }
 
       // Essayer plusieurs URLs possibles
