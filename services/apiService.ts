@@ -209,14 +209,6 @@ class ApiService {
       console.log('🔐 ApiService.login - Tentative de connexion avec:', email);
       console.log('🔗 ApiService.login - URL de base:', this.baseURL);
 
-      // Test de connectivité avant la requête
-      console.log('🔍 ApiService.login - Test de connectivité...');
-      const isConnected = await this.testConnection();
-      console.log('📡 ApiService.login - Connectivité:', isConnected);
-      if (!isConnected) {
-        throw new Error('Impossible de se connecter au serveur. Vérifiez que le serveur est démarré.');
-      }
-
       console.log('📤 ApiService.login - Envoi de la requête de connexion...');
       const data = await this.request('/api/auth/login', {
         method: 'POST',
@@ -259,8 +251,8 @@ class ApiService {
     try {
       console.log('📝 Tentative d\'inscription avec:', userData.email);
 
-      // Test de connectivité avant la requête
-      const isConnected = await this.testConnection();
+      // Test de connectivité avant la requête avec mise à jour de l'URL
+      const isConnected = await this.testConnectivity();
       if (!isConnected) {
         throw new Error('Impossible de se connecter au serveur. Vérifiez que le serveur est démarré.');
       }
