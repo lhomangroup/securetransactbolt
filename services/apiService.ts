@@ -6,10 +6,11 @@ const getApiBaseUrl = () => {
   if (typeof window !== 'undefined' && window.location.hostname.includes('.replit.dev')) {
     const hostname = window.location.hostname;
     
-    // Pour Replit, remplacer le port du frontend par le port 5000 du backend
-    // Format actuel: xxxxxxxxxx.replit.dev devient xxxxxxxxxx-5000.replit.dev
-    const baseUrl = hostname.replace('.replit.dev', '-5000.replit.dev');
-    return `https://${baseUrl}`;
+    // Extraire la partie avant .replit.dev
+    const baseHostname = hostname.replace('.replit.dev', '');
+    
+    // Construire l'URL du backend en ajoutant -5000 avant .replit.dev
+    return `https://${baseHostname}-5000.replit.dev`;
   }
 
   // Utiliser la variable d'environnement si disponible
@@ -75,10 +76,11 @@ class ApiService {
     if (typeof window !== 'undefined' && window.location.hostname.includes('.replit.dev')) {
       const hostname = window.location.hostname;
       
-      // Pour Replit, remplacer le port du frontend par le port 5000 du backend
-      // Format actuel: xxxxxxxxxx.replit.dev devient xxxxxxxxxx-5000.replit.dev
-      const baseUrl = hostname.replace('.replit.dev', '-5000.replit.dev');
-      return `https://${baseUrl}`;
+      // Extraire la partie avant .replit.dev
+      const baseHostname = hostname.replace('.replit.dev', '');
+      
+      // Construire l'URL du backend en ajoutant -5000 avant .replit.dev
+      return `https://${baseHostname}-5000.replit.dev`;
     }
 
     // Pour le développement local
@@ -147,26 +149,40 @@ class ApiService {
     try {
       console.log('🔍 ApiService.testConnectivity - Test avec baseURL:', this.baseURL);
 
-      // Utiliser directement la baseURL qui est déjà correctement configurée
-      try {
-        console.log('🔍 Tentative de connexion à:', this.baseURL);
-        const response = await fetch(`${this.baseURL}/api/health`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          signal: AbortSignal.timeout(5000) // Timeout de 5 secondes
-        });
+      // URLs à tester dans l'ordre
+      const urlsToTest = [
+        this.baseURL,
+        // Fallback pour différents formats Replit
+        ...(typeof window !== 'undefined' && window.location.hostname.includes('.replit.dev') ? [
+          `https://${window.location.hostname.replace('.replit.dev', '')}-5000.replit.dev`,
+          `https://${window.location.hostname.split('.')[0]}-5000.${window.location.hostname.split('.').slice(1).join('.')}`,
+          `https://${window.location.hostname}-5000`,
+        ] : [])
+      ];
 
-        if (response.ok) {
-          console.log('✅ Connexion réussie avec:', this.baseURL);
-          return true;
+      for (const url of urlsToTest) {
+        try {
+          console.log('🔍 Tentative de connexion à:', url);
+          const response = await fetch(`${url}/api/health`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            signal: AbortSignal.timeout(5000) // Timeout de 5 secondes
+          });
+
+          if (response.ok) {
+            console.log('✅ Connexion réussie avec:', url);
+            // Mettre à jour la baseURL avec l'URL qui fonctionne
+            this.baseURL = url;
+            return true;
+          }
+        } catch (error) {
+          console.log('❌ Échec avec:', url, error.message);
         }
-      } catch (error) {
-        console.log('❌ Échec avec:', this.baseURL, error.message);
       }
 
-      console.log('❌ Connexion impossible');
+      console.log('❌ Connexion impossible avec toutes les URLs testées');
       return false;
     } catch (error) {
       console.log('❌ ApiService.testConnectivity - Erreur générale:', error);
