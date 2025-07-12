@@ -143,24 +143,12 @@ class ApiService {
 
   static async testConnectivity(): Promise<boolean> {
     try {
-      console.log('🔍 ApiService.testConnectivity - Test avec:', this.baseURL);
+      console.log('🔍 ApiService.testConnectivity - Test avec baseURL:', this.baseURL);
 
-      // Construire l'URL backend correctement pour Replit
-      let backendUrl = 'http://localhost:5000';
-      if (window.location.hostname.includes('.replit.dev')) {
-        const hostname = window.location.hostname;
-        // Extraire correctement le nom du repl (tout avant le premier point)
-        const replId = hostname.split('.')[0];
-        const userDomain = hostname.split('.').slice(1).join('.');
-        backendUrl = `https://${replId}-5000.${userDomain}`;
-      }
-
-      // Essayer uniquement l'URL backend correcte
-      const url = backendUrl;
-      
+      // Utiliser directement la baseURL qui est déjà correctement configurée
       try {
-        console.log('🔍 Tentative de connexion à:', url);
-        const response = await fetch(`${url}/api/health`, {
+        console.log('🔍 Tentative de connexion à:', this.baseURL);
+        const response = await fetch(`${this.baseURL}/api/health`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -169,12 +157,11 @@ class ApiService {
         });
 
         if (response.ok) {
-          console.log('✅ Connexion réussie avec:', url);
-          // NE PAS redéfinir baseURL car elle est déjà correcte
+          console.log('✅ Connexion réussie avec:', this.baseURL);
           return true;
         }
       } catch (error) {
-        console.log('❌ Échec avec:', url, error.message);
+        console.log('❌ Échec avec:', this.baseURL, error.message);
       }
 
       console.log('❌ Connexion impossible');
