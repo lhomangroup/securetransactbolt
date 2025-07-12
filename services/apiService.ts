@@ -72,15 +72,22 @@ export { apiRequest, API_BASE_URL };
 
 class ApiService {
   private static getBaseURL() {
-    // Dans Replit, construire l'URL backend avec le port 5000
+    // Dans Replit, essayer de détecter l'URL backend automatiquement
     if (typeof window !== 'undefined' && window.location.hostname.includes('.replit.dev')) {
       const hostname = window.location.hostname;
       
-      // Extraire la partie avant .replit.dev
-      const baseHostname = hostname.replace('.replit.dev', '');
-      
-      // Construire l'URL du backend en ajoutant -5000 avant .replit.dev
-      return `https://${baseHostname}-5000.replit.dev`;
+      // Essayer différents formats possibles
+      const possibleUrls = [
+        // Format standard: xyz-5000.replit.dev
+        `https://${hostname.replace('.replit.dev', '')}-5000.replit.dev`,
+        // Format avec utilisateur: xyz-5000.username.replit.dev
+        `https://${hostname.split('.')[0]}-5000.${hostname.split('.').slice(1).join('.')}`,
+        // Format en remplaçant le port existant
+        `https://${hostname.replace(/-\d+\./, '-5000.')}`,
+      ];
+
+      // Retourner la première URL construite (sera validée lors du test de connectivité)
+      return possibleUrls[0];
     }
 
     // Pour le développement local
@@ -150,15 +157,43 @@ class ApiService {
       console.log('🔍 ApiService.testConnectivity - Test avec baseURL:', this.baseURL);
 
       // URLs à tester dans l'ordre
-      const urlsToTest = [
-        this.baseURL,
-        // Fallback pour différents formats Replit
-        ...(typeof window !== 'undefined' && window.location.hostname.includes('.replit.dev') ? [
-          `https://${window.location.hostname.replace('.replit.dev', '')}-5000.replit.dev`,
-          `https://${window.location.hostname.split('.')[0]}-5000.${window.location.hostname.split('.').slice(1).join('.')}`,
-          `https://${window.location.hostname}-5000`,
-        ] : [])
-      ];
+      const urlsToTest = [this.baseURL];
+
+      // Si on est sur Replit, générer différentes variantes d'URL
+      if (typeof window !== 'undefined' && window.location.hostname.includes('.replit.dev')) {
+        const currentHostname = window.location.hostname;
+        console.log('🔍 Hostname actuel:', currentHostname);
+        
+        // Différents formats possibles pour Replit
+        const baseUrls = [
+          // Format standard: xyz-5000.replit.dev
+          `https://${currentHostname.replace('.replit.dev', '')}-5000.replit.dev`,
+          // Format avec utilisateur: xyz-5000.username.replit.dev
+          `https://${currentHostname.split('.')[0]}-5000.${currentHostname.split('.').slice(1).join('.')}`,
+          // Format direct sur le même domaine avec port
+          `https://${currentHostname}:5000`,
+          // Format avec -5000 à la fin
+          `https://${currentHostname}-5000`,
+          // Format en remplaçant le port existant
+          `https://${currentHostname.replace(/-\d+\./, '-5000.')}`,
+          // Format en insérant -5000 avant le premier tiret
+          `https://${currentHostname.replace(/^([^-]+)/, '$1-5000')}`,
+          // Format en remplaçant les tirets par -5000
+          `https://${currentHostname.replace(/-[^.]+\./, '-5000.')}`,
+          // Essayer avec l'URL actuelle en changeant juste le port
+          window.location.origin.replace(window.location.port, '5000'),
+          window.location.origin.replace(/:\d+$/, ':5000'),
+        ];
+
+        // Ajouter toutes les URLs candidates
+        baseUrls.forEach(url => {
+          if (url && !urlsToTest.includes(url)) {
+            urlsToTest.push(url);
+          }
+        });
+      }
+
+      console.log('🔍 URLs à tester:', urlsToTest);
 
       for (const url of urlsToTest) {
         try {
