@@ -155,36 +155,29 @@ class ApiService {
         backendUrl = `https://${replId}-5000.${userDomain}`;
       }
 
-      // Essayer plusieurs URLs possibles
-      const urls = [
-        backendUrl,
-        'http://localhost:5000',
-        this.baseURL,
-      ];
+      // Essayer uniquement l'URL backend correcte
+      const url = backendUrl;
+      
+      try {
+        console.log('🔍 Tentative de connexion à:', url);
+        const response = await fetch(`${url}/api/health`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          signal: AbortSignal.timeout(5000) // Timeout de 5 secondes
+        });
 
-      for (const url of urls) {
-        try {
-          console.log('🔍 Tentative de connexion à:', url);
-          const response = await fetch(`${url}/api/health`, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            signal: AbortSignal.timeout(5000) // Timeout de 5 secondes
-          });
-
-          if (response.ok) {
-            console.log('✅ Connexion réussie avec:', url);
-            this.baseURL = url; // Mettre à jour l'URL de base
-            return true;
-          }
-        } catch (error) {
-          console.log('❌ Échec avec:', url, error.message);
-          continue;
+        if (response.ok) {
+          console.log('✅ Connexion réussie avec:', url);
+          // NE PAS redéfinir baseURL car elle est déjà correcte
+          return true;
         }
+      } catch (error) {
+        console.log('❌ Échec avec:', url, error.message);
       }
 
-      console.log('❌ Aucune URL ne fonctionne');
+      console.log('❌ Connexion impossible');
       return false;
     } catch (error) {
       console.log('❌ ApiService.testConnectivity - Erreur générale:', error);
