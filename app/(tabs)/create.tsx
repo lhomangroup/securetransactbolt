@@ -68,7 +68,7 @@ export default function CreateTransactionScreen() {
     setSelectedImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const { title, description, price, inspectionPeriod, otherPartyEmail, userRole } = formData;
 
     if (!title || !description || !price || !otherPartyEmail) {
@@ -81,33 +81,61 @@ export default function CreateTransactionScreen() {
       return;
     }
 
-    const transactionData = {
-      title,
-      description,
-      price: Number(price),
-      status: 'pending_acceptance' as const,
-      buyerId: userRole === 'buyer' ? user?.id || '' : 'temp_buyer_id',
-      sellerId: userRole === 'seller' ? user?.id || '' : 'temp_seller_id',
-      buyerName: userRole === 'buyer' ? user?.name || '' : 'Acheteur à confirmer',
-      sellerName: userRole === 'seller' ? user?.name || '' : 'Vendeur à confirmer',
-      inspectionPeriod: Number(inspectionPeriod),
-      deliveryAddress: formData.deliveryAddress,
-    };
+    try {
+      const transactionData = {
+        title,
+        description,
+        price: Number(price),
+        status: 'pending_acceptance' as const,
+        buyerId: userRole === 'buyer' ? user?.id || '' : 'temp_buyer_id',
+        sellerId: userRole === 'seller' ? user?.id || '' : 'temp_seller_id',
+        buyerName: userRole === 'buyer' ? user?.name || '' : 'Acheteur à confirmer',
+        sellerName: userRole === 'seller' ? user?.name || '' : 'Vendeur à confirmer',
+        inspectionPeriod: Number(inspectionPeriod),
+        deliveryAddress: formData.deliveryAddress,
+      };
 
-    const transactionId = createTransaction(transactionData);
-    
-    Alert.alert(
-      'Transaction créée',
-      'Votre transaction a été créée avec succès. L\'autre partie va recevoir une notification.',
-      [
-        {
-          text: 'OK',
-          onPress: () => {
-            router.push('/(tabs)');
+      console.log('🔄 Création de la transaction en cours...');
+      const transactionId = await createTransaction(transactionData);
+      console.log('✅ Transaction créée avec l\'ID:', transactionId);
+      
+      Alert.alert(
+        '✅ Succès !',
+        `Votre transaction "${title}" a été créée avec succès.\n\nPrix: ${price}€\nL'autre partie (${otherPartyEmail}) va recevoir une notification.`,
+        [
+          {
+            text: 'Voir mes transactions',
+            onPress: () => {
+              router.push('/(tabs)');
+            },
           },
-        },
-      ]
-    );
+          {
+            text: 'Créer une autre',
+            style: 'cancel',
+            onPress: () => {
+              // Reset le formulaire
+              setFormData({
+                title: '',
+                description: '',
+                price: '',
+                inspectionPeriod: '3',
+                deliveryAddress: '',
+                otherPartyEmail: '',
+                userRole: 'seller',
+              });
+              setSelectedImages([]);
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('❌ Erreur lors de la création:', error);
+      Alert.alert(
+        'Erreur',
+        'Une erreur est survenue lors de la création de la transaction. Veuillez réessayer.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   return (
