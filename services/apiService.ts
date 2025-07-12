@@ -2,10 +2,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Configuration de l'URL de base
 const getApiBaseUrl = () => {
-  // Dans Replit, utiliser l'URL complète du repl
+  // Dans Replit, construire l'URL backend avec le port 5000
   if (typeof window !== 'undefined' && window.location.hostname.includes('.replit.dev')) {
     const hostname = window.location.hostname;
-    return `https://${hostname.replace('-8081', '-5000')}`;
+    const replName = hostname.split('-')[0];
+    const userDomain = hostname.split('.').slice(1).join('.');
+    return `https://${replName}-5000.${userDomain}`;
   }
 
   // Utiliser la variable d'environnement si disponible
@@ -67,11 +69,13 @@ export { apiRequest, API_BASE_URL };
 
 class ApiService {
   private static getBaseURL() {
-    // Dans Replit, utiliser l'URL complète du repl en forçant le port 5000
+    // Dans Replit, construire l'URL backend avec le port 5000
     if (typeof window !== 'undefined' && window.location.hostname.includes('.replit.dev')) {
       const hostname = window.location.hostname;
-      // S'assurer que nous utilisons toujours le port 5000 pour le backend
-      return `https://${hostname.replace('-8081', '-5000')}`;
+      // Extraire le nom du repl et reconstruire l'URL avec le port 5000
+      const replName = hostname.split('-')[0];
+      const userDomain = hostname.split('.').slice(1).join('.');
+      return `https://${replName}-5000.${userDomain}`;
     }
 
     // Pour le développement local
@@ -140,16 +144,19 @@ class ApiService {
     try {
       console.log('🔍 ApiService.testConnectivity - Test avec:', this.baseURL);
 
-      // Construire l'URL backend en remplaçant le port du frontend par celui du backend
-      const backendUrl = window.location.hostname.includes('.replit.dev') 
-        ? `https://${window.location.hostname.replace('-8081', '-5000')}`
-        : 'http://localhost:5000';
+      // Construire l'URL backend correctement pour Replit
+      let backendUrl = 'http://localhost:5000';
+      if (window.location.hostname.includes('.replit.dev')) {
+        const hostname = window.location.hostname;
+        const replName = hostname.split('-')[0];
+        const userDomain = hostname.split('.').slice(1).join('.');
+        backendUrl = `https://${replName}-5000.${userDomain}`;
+      }
 
       // Essayer plusieurs URLs possibles
       const urls = [
         backendUrl,
         'http://localhost:5000',
-        `https://${window.location.hostname.replace('-8081', '-5000')}`,
         this.baseURL,
       ];
 
