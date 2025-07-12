@@ -5,7 +5,8 @@ const getApiBaseUrl = () => {
   // Dans Replit, construire l'URL backend avec le port 5000
   if (typeof window !== 'undefined' && window.location.hostname.includes('.replit.dev')) {
     const hostname = window.location.hostname;
-    const replName = hostname.split('-')[0];
+    // Extraire correctement le nom du repl en supprimant tout suffixe de port existant
+    const replName = hostname.split('.')[0].split('-')[0];
     const userDomain = hostname.split('.').slice(1).join('.');
     return `https://${replName}-5000.${userDomain}`;
   }
@@ -72,8 +73,8 @@ class ApiService {
     // Dans Replit, construire l'URL backend avec le port 5000
     if (typeof window !== 'undefined' && window.location.hostname.includes('.replit.dev')) {
       const hostname = window.location.hostname;
-      // Extraire le nom du repl et reconstruire l'URL avec le port 5000
-      const replName = hostname.split('-')[0];
+      // Extraire correctement le nom du repl en supprimant tout suffixe de port existant
+      const replName = hostname.split('.')[0].split('-')[0];
       const userDomain = hostname.split('.').slice(1).join('.');
       return `https://${replName}-5000.${userDomain}`;
     }
@@ -148,7 +149,8 @@ class ApiService {
       let backendUrl = 'http://localhost:5000';
       if (window.location.hostname.includes('.replit.dev')) {
         const hostname = window.location.hostname;
-        const replName = hostname.split('-')[0];
+        // Extraire correctement le nom du repl en supprimant tout suffixe de port existant
+        const replName = hostname.split('.')[0].split('-')[0];
         const userDomain = hostname.split('.').slice(1).join('.');
         backendUrl = `https://${replName}-5000.${userDomain}`;
       }
