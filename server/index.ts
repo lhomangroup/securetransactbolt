@@ -435,7 +435,7 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
       [
         transactionData.title,
         transactionData.description || '',
-        parseFloat(transactionData.price) || 0,
+        parseFloat(transactionData.price.toString()) || transactionData.price || 0,
         transactionData.status || 'pending_acceptance',
         transactionData.buyerId,
         transactionData.sellerId,
@@ -453,7 +453,7 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
       id: transaction.id.toString(),
       title: transaction.title,
       description: transaction.description,
-      price: parseFloat(transaction.amount) || 0,
+      price: parseFloat(transaction.amount) || transactionData.price || 0,
       status: transaction.status,
       buyerId: transaction.buyer_id?.toString(),
       sellerId: transaction.seller_id?.toString(),
