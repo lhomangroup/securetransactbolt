@@ -72,22 +72,28 @@ export { apiRequest, API_BASE_URL };
 
 class ApiService {
   private static getBaseURL() {
+    // Essayer d'abord l'URL sauvegardée qui a fonctionné précédemment
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        const savedUrl = window.localStorage.getItem('workingApiUrl');
+        if (savedUrl) {
+          console.log('🔄 Utilisation de l\'URL sauvegardée:', savedUrl);
+          return savedUrl;
+        }
+      } catch (e) {
+        console.log('ℹ️ Impossible de lire localStorage');
+      }
+    }
+
     // Dans Replit, essayer de détecter l'URL backend automatiquement
     if (typeof window !== 'undefined' && window.location.hostname.includes('.replit.dev')) {
       const hostname = window.location.hostname;
+      const origin = window.location.origin;
       
-      // Essayer différents formats possibles
-      const possibleUrls = [
-        // Format standard: xyz-5000.replit.dev
-        `https://${hostname.replace('.replit.dev', '')}-5000.replit.dev`,
-        // Format avec utilisateur: xyz-5000.username.replit.dev
-        `https://${hostname.split('.')[0]}-5000.${hostname.split('.').slice(1).join('.')}`,
-        // Format en remplaçant le port existant
-        `https://${hostname.replace(/-\d+\./, '-5000.')}`,
-      ];
-
-      // Retourner la première URL construite (sera validée lors du test de connectivité)
-      return possibleUrls[0];
+      // Essayer d'abord le format avec port dans l'URL (le plus courant maintenant)
+      const portUrl = `${origin.replace(/:\d+$/, '')}:5000`;
+      console.log('🔗 URL prioritaire générée:', portUrl);
+      return portUrl;
     }
 
     // Pour le développement local
@@ -156,33 +162,70 @@ class ApiService {
     try {
       console.log('🔍 ApiService.testConnectivity - Test avec baseURL:', this.baseURL);
 
-      // URLs à tester dans l'ordre
-      const urlsToTest = [this.baseURL];
+      // URLs à tester dans l'ordre - commencer par l'URL sauvegardée
+      const urlsToTest = [];
+      
+      // Ajouter l'URL sauvegardée en priorité si elle existe et est différente de baseURL
+      if (typeof window !== 'undefined' && window.localStorage) {
+        try {
+          const savedUrl = window.localStorage.getItem('workingApiUrl');
+          if (savedUrl && savedUrl !== this.baseURL) {
+            urlsToTest.push(savedUrl);
+            console.log('🔄 Test prioritaire de l\'URL sauvegardée:', savedUrl);
+          }
+        } catch (e) {
+          console.log('ℹ️ Impossible de lire l\'URL sauvegardée');
+        }
+      }
+      
+      // Ajouter l'URL de base actuelle
+      urlsToTest.push(this.baseURL);
 
       // Si on est sur Replit, générer différentes variantes d'URL
       if (typeof window !== 'undefined' && window.location.hostname.includes('.replit.dev')) {
         const currentHostname = window.location.hostname;
+        const currentOrigin = window.location.origin;
         console.log('🔍 Hostname actuel:', currentHostname);
+        console.log('🔍 Origin actuel:', currentOrigin);
+        
+        // Extraire les composants du hostname
+        const parts = currentHostname.split('.');
+        const replUser = parts.length > 2 ? parts[1] : null;
+        const baseName = parts[0];
         
         // Différents formats possibles pour Replit
         const baseUrls = [
+          // Format avec port dans l'URL (nouveau format Replit)
+          `${currentOrigin.replace(/:\d+$/, '')}:5000`,
           // Format standard: xyz-5000.replit.dev
           `https://${currentHostname.replace('.replit.dev', '')}-5000.replit.dev`,
           // Format avec utilisateur: xyz-5000.username.replit.dev
-          `https://${currentHostname.split('.')[0]}-5000.${currentHostname.split('.').slice(1).join('.')}`,
+          `https://${baseName}-5000.${parts.slice(1).join('.')}`,
+          // Format workspace: workspace-5000.username.replit.dev
+          replUser ? `https://${baseName}-5000.${replUser}.replit.dev` : null,
+          // Format avec UUID: uuid-00-name.janeway-5000.replit.dev
+          `https://${baseName}.${parts.slice(1).join('.')}-5000.replit.dev`,
+          // Format proxy Replit interne
+          currentOrigin.replace(/https?:\/\/([^.]+)/, '$&-5000'),
           // Format direct sur le même domaine avec port
           `https://${currentHostname}:5000`,
-          // Format avec -5000 à la fin
-          `https://${currentHostname}-5000`,
           // Format en remplaçant le port existant
           `https://${currentHostname.replace(/-\d+\./, '-5000.')}`,
           // Format en insérant -5000 avant le premier tiret
           `https://${currentHostname.replace(/^([^-]+)/, '$1-5000')}`,
           // Format en remplaçant les tirets par -5000
           `https://${currentHostname.replace(/-[^.]+\./, '-5000.')}`,
-          // Essayer avec l'URL actuelle en changeant juste le port
-          window.location.origin.replace(window.location.port, '5000'),
-          window.location.origin.replace(/:\d+$/, ':5000'),
+          // Format proxy: ajouter -5000 à la fin du hostname
+          `https://${currentHostname}-5000`,
+          // Format avec remplacement de port dans l'origin
+          currentOrigin.replace(window.location.port || '8081', '5000'),
+          currentOrigin.replace(/:\d+$/, ':5000'),
+          // Format spécial pour les UUIDs longs
+          currentHostname.includes('-00-') ? 
+            `https://${currentHostname.replace(/(-00-[^.]+)/, '$1-5000')}` : null,
+          // Essayer le format workspace avec port
+          currentHostname.includes('workspace') ? 
+            `https://${currentHostname.replace('workspace', 'workspace-5000')}` : null,
         ];
 
         // Ajouter toutes les URLs candidates
@@ -210,6 +253,17 @@ class ApiService {
             console.log('✅ Connexion réussie avec:', url);
             // Mettre à jour la baseURL avec l'URL qui fonctionne
             this.baseURL = url;
+            
+            // Sauvegarder cette URL pour les prochaines sessions
+            try {
+              if (typeof window !== 'undefined' && window.localStorage) {
+                window.localStorage.setItem('workingApiUrl', url);
+                console.log('💾 URL sauvegardée pour les prochaines sessions:', url);
+              }
+            } catch (e) {
+              console.log('ℹ️ Impossible de sauvegarder l\'URL dans localStorage');
+            }
+            
             return true;
           }
         } catch (error) {
