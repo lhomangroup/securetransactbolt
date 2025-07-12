@@ -2,7 +2,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Configuration de l'URL de base
 const getApiBaseUrl = () => {
-  // Utiliser la variable d'environnement si disponible, sinon localhost
+  // Dans Replit, utiliser l'URL complète du repl
+  if (typeof window !== 'undefined' && window.location.hostname.includes('.replit.dev')) {
+    const hostname = window.location.hostname;
+    return `https://${hostname.replace('-8081', '-5000')}`;
+  }
+
+  // Utiliser la variable d'environnement si disponible
   if (process.env.EXPO_PUBLIC_API_BASE_URL) {
     return process.env.EXPO_PUBLIC_API_BASE_URL;
   }
@@ -16,7 +22,7 @@ const getApiBaseUrl = () => {
   return 'http://localhost:5000';
 };
 
-const API_BASE_URL = getApiBaseUrl();
+let API_BASE_URL = getApiBaseUrl();
 
 console.log('🔗 API Base URL:', API_BASE_URL);
 
@@ -82,9 +88,9 @@ class ApiService {
     const authHeaders = await this.getAuthHeader();
 
     try {
-      console.log(`📡 Making request to: ${API_BASE_URL}${endpoint}`);
+      console.log(`📡 Making request to: ${this.baseURL}${endpoint}`);
 
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      const response = await fetch(`${this.baseURL}${endpoint}`, {
         headers: {
           'Content-Type': 'application/json',
           ...authHeaders,
@@ -174,7 +180,7 @@ class ApiService {
   // Test de connectivité
   static async testConnection() {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/health`);
+      const response = await fetch(`${this.baseURL}/api/health`);
       const data = await response.json();
       console.log('✅ Serveur accessible:', data);
       return true;
@@ -187,7 +193,7 @@ class ApiService {
   // Test de la base de données
   static async testDatabase() {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/db-test`);
+      const response = await fetch(`${this.baseURL}/api/db-test`);
       const data = await response.json();
       console.log('✅ Base de données accessible:', data);
       return true;
@@ -201,7 +207,7 @@ class ApiService {
   static async login(email: string, password: string) {
     try {
       console.log('🔐 ApiService.login - Tentative de connexion avec:', email);
-      console.log('🔗 ApiService.login - URL de base:', API_BASE_URL);
+      console.log('🔗 ApiService.login - URL de base:', this.baseURL);
 
       // Test de connectivité avant la requête
       console.log('🔍 ApiService.login - Test de connectivité...');
