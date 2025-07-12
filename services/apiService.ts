@@ -6,23 +6,10 @@ const getApiBaseUrl = () => {
   if (typeof window !== 'undefined' && window.location.hostname.includes('.replit.dev')) {
     const hostname = window.location.hostname;
     
-    // Extraire le nom du repl de l'hostname
-    // Format: workspace.lhomangroup.replit.dev ou workspace.lhomangroup-8081.replit.dev
-    let replName = hostname.split('.')[0];
-    let username = hostname.split('.')[1];
-    
-    // Si l'hostname contient un port, le retirer du nom du repl
-    if (replName.includes('-')) {
-      const parts = replName.split('-');
-      // Garder tout sauf le dernier élément s'il ressemble à un port
-      const lastPart = parts[parts.length - 1];
-      if (/^\d+$/.test(lastPart)) {
-        replName = parts.slice(0, -1).join('-');
-      }
-    }
-    
-    // Construire l'URL du backend
-    return `https://${replName}.${username}-5000.replit.dev`;
+    // Pour Replit, remplacer le port du frontend par le port 5000 du backend
+    // Format actuel: xxxxxxxxxx.replit.dev devient xxxxxxxxxx-5000.replit.dev
+    const baseUrl = hostname.replace('.replit.dev', '-5000.replit.dev');
+    return `https://${baseUrl}`;
   }
 
   // Utiliser la variable d'environnement si disponible
@@ -88,23 +75,10 @@ class ApiService {
     if (typeof window !== 'undefined' && window.location.hostname.includes('.replit.dev')) {
       const hostname = window.location.hostname;
       
-      // Extraire le nom du repl de l'hostname
-      // Format: workspace.lhomangroup.replit.dev ou workspace.lhomangroup-8081.replit.dev
-      let replName = hostname.split('.')[0];
-      let username = hostname.split('.')[1];
-      
-      // Si l'hostname contient un port, le retirer du nom du repl
-      if (replName.includes('-')) {
-        const parts = replName.split('-');
-        // Garder tout sauf le dernier élément s'il ressemble à un port
-        const lastPart = parts[parts.length - 1];
-        if (/^\d+$/.test(lastPart)) {
-          replName = parts.slice(0, -1).join('-');
-        }
-      }
-      
-      // Construire l'URL du backend
-      return `https://${replName}.${username}-5000.replit.dev`;
+      // Pour Replit, remplacer le port du frontend par le port 5000 du backend
+      // Format actuel: xxxxxxxxxx.replit.dev devient xxxxxxxxxx-5000.replit.dev
+      const baseUrl = hostname.replace('.replit.dev', '-5000.replit.dev');
+      return `https://${baseUrl}`;
     }
 
     // Pour le développement local
