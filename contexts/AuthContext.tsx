@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiService from '@/services/apiService';
@@ -46,10 +45,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('🔍 Vérification du statut d\'authentification...');
         const token = await AsyncStorage.getItem('authToken');
         const storedUserId = await AsyncStorage.getItem('userId');
-        
+
         console.log('📱 Token trouvé:', !!token);
         console.log('👤 User ID trouvé:', !!storedUserId);
-        
+
         if (token && storedUserId) {
           try {
             const userData = await ApiService.getUserById(storedUserId);
@@ -93,10 +92,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
       console.log('🔐 AuthContext.login - Début du processus de connexion pour:', email);
-      
+
+      // Tester la connectivité avant de tenter la connexion
+      console.log('🔍 ApiService.login - Test de connectivité...');
+      const isConnected = await ApiService.testConnectivity();
+      console.log('📡 ApiService.login - Connectivité:', isConnected);
+
+      if (!isConnected) {
+        throw new Error('Impossible de se connecter au serveur. Le serveur backend est peut-être en cours de démarrage, veuillez réessayer dans quelques secondes.');
+      }
+
       const userData = await ApiService.login(email, password);
       console.log('📦 AuthContext.login - Données reçues:', userData ? 'OK' : 'NULL');
-      
+
       if (userData) {
         console.log('✅ AuthContext.login - Données utilisateur reçues:', userData.name);
         setUser(userData);
@@ -112,7 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('❌ AuthContext.login - Erreur:', error.message);
       setIsAuthenticated(false);
       setUser(null);
-      
+
       // Lancer l'erreur avec un message approprié
       const errorMessage = error.message || 'Une erreur inattendue est survenue lors de la connexion';
       console.log('🚨 AuthContext.login - Lancement de l\'erreur:', errorMessage);
@@ -127,9 +135,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
       console.log('📝 Début du processus d\'inscription...');
-      
+
       const newUser = await ApiService.register(userData);
-      
+
       if (newUser) {
         setUser(newUser);
         setIsAuthenticated(true);
@@ -141,7 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error: any) {
       console.error('❌ Erreur lors de l\'inscription dans AuthContext:', error);
-      
+
       // Lancer l'erreur avec un message approprié
       const errorMessage = error.message || 'Une erreur inattendue est survenue lors de la création du compte';
       throw new Error(errorMessage);

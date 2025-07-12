@@ -6,12 +6,12 @@ const getApiBaseUrl = () => {
   if (process.env.EXPO_PUBLIC_API_BASE_URL) {
     return process.env.EXPO_PUBLIC_API_BASE_URL;
   }
-  
+
   // Configuration pour Replit si les variables d'environnement sont disponibles
   if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
     return `https://${process.env.REPL_SLUG}-5000.${process.env.REPL_OWNER}.replit.dev`;
   }
-  
+
   // Configuration pour développement local
   return 'http://localhost:5000';
 };
@@ -31,7 +31,7 @@ const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
 
   try {
     console.log(`📡 API Request: ${options.method || 'GET'} ${url}`);
-    
+
     const response = await fetch(url, {
       ...options,
       headers: defaultHeaders,
@@ -60,6 +60,19 @@ const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
 export { apiRequest, API_BASE_URL };
 
 class ApiService {
+  private static getBaseURL() {
+    // Dans Replit, utiliser l'URL complète du repl
+    if (typeof window !== 'undefined' && window.location.hostname.includes('.replit.dev')) {
+      const hostname = window.location.hostname;
+      return `https://${hostname.replace('-8081', '-5000')}`;
+    }
+
+    // Pour le développement local
+    return 'http://localhost:5000';
+  }
+
+  private static baseURL = ApiService.getBaseURL();
+
   private static async getAuthHeader() {
     const token = await AsyncStorage.getItem('authToken');
     return token ? { Authorization: `Bearer ${token}` } : {};
@@ -70,7 +83,7 @@ class ApiService {
 
     try {
       console.log(`📡 Making request to: ${API_BASE_URL}${endpoint}`);
-      
+
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         headers: {
           'Content-Type': 'application/json',
@@ -108,11 +121,53 @@ class ApiService {
       return data;
     } catch (error: any) {
       console.error('❌ Request error:', error);
-      
+
       if (error.name === 'TypeError' && (error.message.includes('fetch') || error.message.includes('Failed to fetch'))) {
         throw new Error('Impossible de se connecter au serveur. Vérifiez que le serveur est démarré.');
       }
       throw error;
+    }
+  }
+
+  static async testConnectivity(): Promise<boolean> {
+    try {
+      console.log('🔍 ApiService.testConnectivity - Test avec:', this.baseURL);
+
+      // Essayer plusieurs URLs possibles
+      const urls = [
+        this.baseURL,
+        'http://localhost:5000',
+        `https://${window.location.hostname.replace('-8081', '-5000')}`,
+        `http://${window.location.hostname.replace('-8081', '-5000')}`
+      ];
+
+      for (const url of urls) {
+        try {
+          console.log('🔍 Tentative de connexion à:', url);
+          const response = await fetch(`${url}/api/health`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            signal: AbortSignal.timeout(5000) // Timeout de 5 secondes
+          });
+
+          if (response.ok) {
+            console.log('✅ Connexion réussie avec:', url);
+            this.baseURL = url; // Mettre à jour l'URL de base
+            return true;
+          }
+        } catch (error) {
+          console.log('❌ Échec avec:', url, error.message);
+          continue;
+        }
+      }
+
+      console.log('❌ Aucune URL ne fonctionne');
+      return false;
+    } catch (error) {
+      console.log('❌ ApiService.testConnectivity - Erreur générale:', error);
+      return false;
     }
   }
 
@@ -147,7 +202,7 @@ class ApiService {
     try {
       console.log('🔐 ApiService.login - Tentative de connexion avec:', email);
       console.log('🔗 ApiService.login - URL de base:', API_BASE_URL);
-      
+
       // Test de connectivité avant la requête
       console.log('🔍 ApiService.login - Test de connectivité...');
       const isConnected = await this.testConnection();
@@ -155,7 +210,7 @@ class ApiService {
       if (!isConnected) {
         throw new Error('Impossible de se connecter au serveur. Vérifiez que le serveur est démarré.');
       }
-      
+
       console.log('📤 ApiService.login - Envoi de la requête de connexion...');
       const data = await this.request('/api/auth/login', {
         method: 'POST',
@@ -197,7 +252,7 @@ class ApiService {
   static async register(userData: any) {
     try {
       console.log('📝 Tentative d\'inscription avec:', userData.email);
-      
+
       // Test de connectivité avant la requête
       const isConnected = await this.testConnection();
       if (!isConnected) {
@@ -209,7 +264,7 @@ class ApiService {
       if (!dbConnected) {
         throw new Error('Base de données non disponible. Vérifiez la configuration PostgreSQL.');
       }
-      
+
       const data = await this.request('/api/auth/register', {
         method: 'POST',
         body: JSON.stringify(userData),

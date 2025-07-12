@@ -26,8 +26,17 @@ const getAllowedOrigins = () => {
 
   // Add Replit dynamic origins if available
   if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
-    origins.push(`https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.dev`);
+    const replitUrl = `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.replit.dev`;
+    origins.push(replitUrl);
+    
+    // Ajouter aussi les variantes avec le port 8081
+    origins.push(replitUrl.replace('.replit.dev', '-8081.replit.dev'));
   }
+
+  // Ajouter les patterns Replit génériques
+  origins.push(/.*\.replit\.dev$/);
+
+  console.log('🔗 CORS Origins autorisées:', origins);
 
   return origins;
 };
