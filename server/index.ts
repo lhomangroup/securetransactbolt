@@ -417,31 +417,44 @@ app.get('/api/transactions/user/:userId', authenticateToken, async (req, res) =>
 
 app.post('/api/transactions', authenticateToken, async (req, res) => {
   try {
+    console.log('📝 Données reçues pour création transaction:', req.body);
     const transactionData = req.body;
+    
+    // Validation des données requises
+    if (!transactionData.title || !transactionData.price || !transactionData.buyerId || !transactionData.sellerId) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Données manquantes: titre, prix, acheteur et vendeur requis' 
+      });
+    }
+
     const result = await pool.query(
-      `INSERT INTO transactions (title, description, price, status, buyer_id, seller_id, buyer_name, seller_name, inspection_period, delivery_address, created_date, last_update) 
+      `INSERT INTO transactions (title, description, amount, status, buyer_id, seller_id, buyer_name, seller_name, inspection_period, delivery_address, created_date, last_update) 
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) 
        RETURNING *`,
       [
         transactionData.title,
-        transactionData.description,
-        transactionData.price,
+        transactionData.description || '',
+        parseFloat(transactionData.price) || 0,
         transactionData.status || 'pending_acceptance',
         transactionData.buyerId,
         transactionData.sellerId,
-        transactionData.buyerName,
-        transactionData.sellerName,
-        transactionData.inspectionPeriod || 3,
-        transactionData.deliveryAddress,
+        transactionData.buyerName || 'Acheteur',
+        transactionData.sellerName || 'Vendeur',
+        parseInt(transactionData.inspectionPeriod) || 3,
+        transactionData.deliveryAddress || '',
         new Date().toISOString().split('T')[0],
         new Date().toISOString().split('T')[0]
       ]
     );
 
     const transaction = result.rows[0];
-    res.status(201).json({
-      ...transaction,
+    const mappedTransaction = {
       id: transaction.id.toString(),
+      title: transaction.title,
+      description: transaction.description,
+      price: parseFloat(transaction.amount) || 0,
+      status: transaction.status,
       buyerId: transaction.buyer_id?.toString(),
       sellerId: transaction.seller_id?.toString(),
       buyerName: transaction.buyer_name,
@@ -452,7 +465,10 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
       deliveryAddress: transaction.delivery_address,
       disputeReason: transaction.dispute_reason,
       lastUpdate: transaction.last_update
-    });
+    };
+    
+    console.log('✅ Transaction créée:', mappedTransaction);
+    res.status(201).json(mappedTransaction);
   } catch (error) {
     console.error('Erreur lors de la création de la transaction:', error);
     res.status(500).json({ error: 'Erreur serveur' });
