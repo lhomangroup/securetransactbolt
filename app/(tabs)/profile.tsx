@@ -1,7 +1,25 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  Alert,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, Settings, Bell, CreditCard, Shield, CircleHelp as HelpCircle, LogOut, Star, Calendar, ChevronRight } from 'lucide-react-native';
+import {
+  User,
+  Settings,
+  Bell,
+  CreditCard,
+  Shield,
+  CircleHelp as HelpCircle,
+  LogOut,
+  Star,
+  Calendar,
+  ChevronRight,
+} from 'lucide-react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 
@@ -10,35 +28,29 @@ export default function ProfileScreen() {
   const router = useRouter();
 
   const handleLogout = () => {
-    Alert.alert(
-      'Déconnexion',
-      'Êtes-vous sûr de vouloir vous déconnecter ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { 
-          text: 'Déconnexion', 
-          style: 'destructive',
-          onPress: () => {
-            logout();
-            router.replace('/(auth)/');
-          }
+    Alert.alert('Déconnexion', 'Êtes-vous sûr de vouloir vous déconnecter ?', [
+      { text: 'Annuler', style: 'cancel' },
+      {
+        text: 'Déconnexion',
+        style: 'destructive',
+        onPress: async () => {
+          await logout(); // Attendez que la déconnexion soit complétée
+          router.replace('/(auth)/'); // Redirigez vers la page d'authentification
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const ProfileSection = ({ children }: { children: React.ReactNode }) => (
-    <View style={styles.section}>
-      {children}
-    </View>
+    <View style={styles.section}>{children}</View>
   );
 
-  const ProfileItem = ({ 
-    icon, 
-    title, 
-    subtitle, 
-    onPress, 
-    showChevron = true 
+  const ProfileItem = ({
+    icon,
+    title,
+    subtitle,
+    onPress,
+    showChevron = true,
   }: {
     icon: React.ReactNode;
     title: string;
@@ -48,9 +60,7 @@ export default function ProfileScreen() {
   }) => (
     <TouchableOpacity style={styles.item} onPress={onPress}>
       <View style={styles.itemLeft}>
-        <View style={styles.itemIcon}>
-          {icon}
-        </View>
+        <View style={styles.itemIcon}>{icon}</View>
         <View style={styles.itemContent}>
           <Text style={styles.itemTitle}>{title}</Text>
           {subtitle && <Text style={styles.itemSubtitle}>{subtitle}</Text>}
@@ -66,7 +76,10 @@ export default function ProfileScreen() {
         <Text style={styles.title}>Profil</Text>
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Profil utilisateur */}
         <View style={styles.userCard}>
           <View style={styles.userAvatar}>

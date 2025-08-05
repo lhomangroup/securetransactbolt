@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiService from '@/services/apiService';
 
@@ -42,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const checkAuthStatus = async () => {
       try {
-        console.log('🔍 Vérification du statut d\'authentification...');
+        console.log("🔍 Vérification du statut d'authentification...");
         const token = await AsyncStorage.getItem('authToken');
         const storedUserId = await AsyncStorage.getItem('userId');
 
@@ -63,7 +69,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               setUser(null);
             }
           } catch (error) {
-            console.log('❌ Erreur lors de la récupération des données utilisateur:', error);
+            console.log(
+              '❌ Erreur lors de la récupération des données utilisateur:',
+              error,
+            );
             await AsyncStorage.multiRemove(['authToken', 'userId']);
             setIsAuthenticated(false);
             setUser(null);
@@ -74,13 +83,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(null);
         }
       } catch (error) {
-        console.error('Erreur lors de la vérification de l\'authentification:', error);
+        console.error(
+          "Erreur lors de la vérification de l'authentification:",
+          error,
+        );
         // Si l'erreur est due à un token invalide, on nettoie le stockage
         await AsyncStorage.multiRemove(['authToken', 'userId']);
         setIsAuthenticated(false);
         setUser(null);
       } finally {
-        console.log('🏁 Vérification d\'authentification terminée');
+        console.log("🏁 Vérification d'authentification terminée");
         setLoading(false);
       }
     };
@@ -91,7 +103,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       setLoading(true);
-      console.log('🔐 AuthContext.login - Début du processus de connexion pour:', email);
+      console.log(
+        '🔐 AuthContext.login - Début du processus de connexion pour:',
+        email,
+      );
 
       // Tester la connectivité avant de tenter la connexion
       console.log('🔍 ApiService.login - Test de connectivité...');
@@ -99,18 +114,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('📡 ApiService.login - Connectivité:', isConnected);
 
       if (!isConnected) {
-        throw new Error('Impossible de se connecter au serveur. Le serveur backend est peut-être en cours de démarrage, veuillez réessayer dans quelques secondes.');
+        throw new Error(
+          'Impossible de se connecter au serveur. Le serveur backend est peut-être en cours de démarrage, veuillez réessayer dans quelques secondes.',
+        );
       }
 
       const userData = await ApiService.login(email, password);
-      console.log('📦 AuthContext.login - Données reçues:', userData ? 'OK' : 'NULL');
+      console.log(
+        '📦 AuthContext.login - Données reçues:',
+        userData ? 'OK' : 'NULL',
+      );
 
       if (userData) {
-        console.log('✅ AuthContext.login - Données utilisateur reçues:', userData.name);
+        console.log(
+          '✅ AuthContext.login - Données utilisateur reçues:',
+          userData.name,
+        );
         setUser(userData);
         setIsAuthenticated(true);
         await AsyncStorage.setItem('userId', userData.id);
-        console.log('✅ AuthContext.login - État mis à jour - isAuthenticated: true, user:', userData.name);
+        console.log(
+          '✅ AuthContext.login - État mis à jour - isAuthenticated: true, user:',
+          userData.name,
+        );
         return true;
       } else {
         console.log('❌ AuthContext.login - Aucune donnée utilisateur reçue');
@@ -122,8 +148,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
 
       // Lancer l'erreur avec un message approprié
-      const errorMessage = error.message || 'Une erreur inattendue est survenue lors de la connexion';
-      console.log('🚨 AuthContext.login - Lancement de l\'erreur:', errorMessage);
+      const errorMessage =
+        error.message ||
+        'Une erreur inattendue est survenue lors de la connexion';
+      console.log(
+        "🚨 AuthContext.login - Lancement de l'erreur:",
+        errorMessage,
+      );
       throw new Error(errorMessage);
     } finally {
       console.log('🏁 AuthContext.login - setLoading(false)');
@@ -134,7 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (userData: RegisterData): Promise<boolean> => {
     try {
       setLoading(true);
-      console.log('📝 Début du processus d\'inscription...');
+      console.log("📝 Début du processus d'inscription...");
 
       const newUser = await ApiService.register(userData);
 
@@ -148,10 +179,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error('Données utilisateur non reçues');
       }
     } catch (error: any) {
-      console.error('❌ Erreur lors de l\'inscription dans AuthContext:', error);
+      console.error("❌ Erreur lors de l'inscription dans AuthContext:", error);
 
       // Lancer l'erreur avec un message approprié
-      const errorMessage = error.message || 'Une erreur inattendue est survenue lors de la création du compte';
+      const errorMessage =
+        error.message ||
+        'Une erreur inattendue est survenue lors de la création du compte';
       throw new Error(errorMessage);
     } finally {
       setLoading(false);
@@ -161,7 +194,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       await ApiService.logout();
-      await AsyncStorage.multiRemove(['userId']);
+      await AsyncStorage.multiRemove(['authToken', 'userId']); // Nettoyez le stockage
       setUser(null);
       setIsAuthenticated(false);
     } catch (error) {
@@ -181,15 +214,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      isAuthenticated,
-      login,
-      register,
-      logout,
-      updateProfile,
-      loading,
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isAuthenticated,
+        login,
+        register,
+        logout,
+        updateProfile,
+        loading,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
